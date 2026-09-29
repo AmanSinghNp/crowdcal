@@ -1,10 +1,11 @@
-"""crowdcal splits | run | freeze | report | demo"""
+"""crowdcal splits | run | pilot | freeze | report | demo"""
 import argparse
 import json
 import os
 import shutil
 import subprocess
 import sys
+import time
 from pathlib import Path
 
 from crowdcal import data
@@ -48,6 +49,46 @@ def cmd_run(a) -> int:
         stats = run_arm(arm, [i for i in items if i.dataset == ds], wordings, Path("data/raw"),
                         manifest["dataset_rev"][ds], a.repeats, prereg["budget_usd"])
         print(ds, stats)
+    return 0
+
+
+def pilot_summary(rows: list[dict], seconds: float, n_full_items: int, n_wordings: int) -> dict:
+    """Plumbing only (PREREG Phase 3): never reads soft labels, so no metric can leak into config decisions."""
+    ok = [r for r in rows if r["status"] == "ok"]
+    by_cell: dict = {}
+    for r in ok:
+        by_cell.setdefault((r["item_id"], r["wording_id"]), []).append(round(r["p_yes"], 4))
+    multi = [v for v in by_cell.values() if len(v) > 1]
+    identical = sum(len(set(v)) == 1 for v in multi) / len(multi) if multi else None
+    cost = sum((r.get("usage") or {}).get("cost_usd") or 0.0 for r in rows)
+    reasoning = sum((((r.get("raw") or {}).get("usage") or {}).get("completion_tokens_details") or {})
+                    .get("reasoning_tokens") or 0 for r in rows)
+    ps = [r["p_yes"] for r in ok]
+    repeats = 1 if identical == 1.0 else 3
+    return {"rows": len(rows), "ok": len(ok), "fail_rate": round(1 - len(ok) / len(rows), 4) if rows else None,
+            "repeat_identical_frac": identical, "planned_repeats": repeats,
+            "p_min": min(ps, default=None), "p_max": max(ps, default=None), "p_distinct": len(set(ps)),
+            "served_models": sorted({r["response_model"] for r in ok if r.get("response_model")}),
+            "reasoning_tokens": reasoning, "cost_usd": round(cost, 6),
+            "projected_full_run_usd": round(cost / len(rows) * n_full_items * n_wordings * repeats, 2) if rows else None,
+            "sec_per_call": round(seconds / len(rows), 4) if rows else None}
+
+
+def cmd_pilot(a) -> int:
+    if not _has_prereg_tag():
+        print(f"refusing to pilot {a.arm!r}: git tag {PREREG_TAG} does not exist.", file=sys.stderr)
+        return 2
+    arm, out = _build_arm(a.arm), Path("data/pilot")
+    items = data.load_split("calib")[: a.n]  # PREREG: pilot items come from calib, never test
+    manifest = json.loads(Path("data/splits/manifest.json").read_text())
+    wordings = data.load_wordings(WORDINGS_PATH) if arm.prompted else None
+    t = time.time()
+    run_arm(arm, items, wordings, out, manifest["dataset_rev"]["mnli-dev"], a.repeats, _load("prereg.json")["budget_usd"])
+    rows = [r for f in (out / a.arm).glob("*.jsonl") for r in map(json.loads, f.read_text().splitlines()) if r]
+    n_full = manifest["counts"]["calib"] + manifest["counts"]["test"]
+    s = {"arm": a.arm, "n_items": len(items), **pilot_summary(rows, time.time() - t, n_full, len(wordings or [None]))}
+    (out / f"{a.arm}.summary.json").write_text(json.dumps(s, indent=2) + "\n")
+    print(json.dumps(s, indent=2))
     return 0
 
 
@@ -104,6 +145,11 @@ def main(argv=None) -> int:
     r.add_argument("--repeats", type=int, default=1)
     r.add_argument("--limit", type=int, default=None)
     r.set_defaults(fn=cmd_run)
+    pl = sub.add_parser("pilot")
+    pl.add_argument("--arm", required=True)
+    pl.add_argument("--n", type=int, default=50)
+    pl.add_argument("--repeats", type=int, default=2)
+    pl.set_defaults(fn=cmd_pilot)
     sub.add_parser("freeze").set_defaults(fn=lambda a: print(f"wrote SHA256SUMS over {write_sums(Path('data/raw'))} files") or 0)
     p = sub.add_parser("report")
     p.add_argument("--raw-dir", default="data/raw")

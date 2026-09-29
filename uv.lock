@@ -152,6 +152,7 @@ dependencies = [
 
 [package.optional-dependencies]
 local = [
+    { name = "laya" },
     { name = "torch" },
     { name = "transformers" },
 ]
@@ -164,6 +165,7 @@ dev = [
 [package.metadata]
 requires-dist = [
     { name = "httpx", specifier = ">=0.27" },
+    { name = "laya", marker = "extra == 'local'", specifier = "==0.3.21" },
     { name = "matplotlib", specifier = ">=3.9" },
     { name = "numpy", specifier = ">=2" },
     { name = "scipy", specifier = ">=1.13" },
@@ -553,6 +555,22 @@ wheels = [
     { url = "https://files.pythonhosted.org/packages/a9/c4/1407df7512a5b36cc79840e01710dc575733c461b13ab866cae77eaf87f3/kiwisolver-1.5.1-graalpy312-graalpy250_312_native-macosx_11_0_arm64.whl", hash = "sha256:482676e5bd48d70ac99d9fc78863469845421e01184fa83f1f9366dc49f7e974", size = 134002, upload-time = "2026-08-28T10:28:08.881Z" },
     { url = "https://files.pythonhosted.org/packages/16/45/c37a21ad5c0ab581a93c55ad544721aaa1f0ae94edb29c6a678a23d013e6/kiwisolver-1.5.1-graalpy312-graalpy250_312_native-manylinux_2_24_x86_64.manylinux_2_28_x86_64.whl", hash = "sha256:072bdb15a3c19a5b5dbc8f8fb1f4e1884bf4f3507eeb4cc6334401274d37a5c0", size = 194292, upload-time = "2026-08-28T10:28:11.06Z" },
     { url = "https://files.pythonhosted.org/packages/a6/c1/69f00d627949580e43d57af0aa465df46868d7c29801c137a55374101294/kiwisolver-1.5.1-graalpy312-graalpy250_312_native-win_amd64.whl", hash = "sha256:a5a00665d1a0e26763a7338d7e911d4598fbc1d50dd0d6b7919b7dc6c5d6569f", size = 73362, upload-time = "2026-08-28T10:28:12.449Z" },
+]
+
+[[package]]
+name = "laya"
+version = "0.3.21"
+source = { registry = "https://pypi.org/simple" }
+dependencies = [
+    { name = "huggingface-hub" },
+    { name = "numpy" },
+    { name = "safetensors" },
+    { name = "torch" },
+    { name = "transformers" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/53/6e/62c03b37ffa117ee49ed26984fd6db41c893979ef7620c46b5e8739f693a/laya-0.3.21.tar.gz", hash = "sha256:a3ddc55d12ffde42966076aef0981800ad00bfb60d015c06de47ebd2ba03f416", size = 555779, upload-time = "2026-09-27T19:41:36.368Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/ca/6b/b48b4af2ceed6bc6885b2b40706a14f3e189ec5f7dd29ad406556a4a20ce/laya-0.3.21-py3-none-any.whl", hash = "sha256:6d6e73b2729d561643e79719c212b1159332fd25345f050efa5734d22e89ace3", size = 214549, upload-time = "2026-09-27T19:41:34.663Z" },
 ]
 
 [[package]]

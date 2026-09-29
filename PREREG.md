@@ -85,4 +85,13 @@ The analysis is `crowdcal report` at the commit tagged `prereg-v1`, run on `conf
 
 ## Amendments
 
-_None yet. Each entry must give the date, what changed, why, and confirm that no test-split model output had been examined._
+Each entry gives the date, what changed, why, and confirms that no test-split model output had been examined.
+
+### A1 — 2026-09-30 — Laya precision and repeats (pilot, `laya-base`)
+
+- **Found:** `laya==0.3.21` rounds every returned probability to 4 decimals. On 50 pilot calib items, 60 of 300 outputs came back as exactly 0.0 and 2 as exactly 1.0. That collapses saturated predictions and prevents recalibration from separating them.
+- **Changed:** the Laya arms (`laya-base`, `laya-ft`) now record the unrounded P(yes). The code is otherwise identical, with the same logits and the same shipped temperature. The rounded pilot rows are kept in `data/pilot/_superseded/`.
+- **Changed:** `laya-base` uses **1 repeat**. All 150 (item, wording) pairs were identical across 2 repeats.
+- **Noted, no change:** the checkpoint warns that its shipped temperature for 11+-option choice questions is out of range and gets clamped. That doesn't affect yes/no (Noul) questions.
+- **Pinning:** `laya.load(..., revision=<SHA>)` enforces the §4 revision. `laya==0.3.21` is pinned in `pyproject.toml`.
+- **Test data examined:** none. The pilot summary reads no soft labels.

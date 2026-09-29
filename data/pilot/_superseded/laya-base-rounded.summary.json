@@ -1,0 +1,17 @@
+{
+  "arm": "laya-base",
+  "n_items": 50,
+  "rows": 300,
+  "ok": 300,
+  "fail_rate": 0.0,
+  "repeat_identical_frac": 1.0,
+  "planned_repeats": 1,
+  "p_min": 0.0,
+  "p_max": 1.0,
+  "p_distinct": 99,
+  "served_models": [],
+  "reasoning_tokens": 0,
+  "cost_usd": 0.0,
+  "projected_full_run_usd": 0.0,
+  "sec_per_call": 0.0524
+}

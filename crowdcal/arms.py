@@ -163,21 +163,24 @@ class LocalArm:
         self.model_version = f"{hf_id}@{revision}"
         self.kind = "laya" if name.startswith("laya") else "seqcls"
         self.context_template = context_template or _context_template()
-        self.elicitation = {"kind": self.kind}
+        self.elicitation = {"kind": self.kind, **({"unrounded": True} if self.kind == "laya" else {})}
         if prompted:
             self.elicitation["context_template"] = self.context_template
         self._model = self._tok = None
 
     def predict(self, item: Item, wording: Wording | None) -> Prediction:
         if self.kind == "laya":
-            # TODO(pilot): unverified against a real install. Usage from the laya README: laya.load(hf_id[, subfolder=...])
-            # then agent.predict(state, questions)["answers"][key]["noul"] = P(true) in [0,1]. laya.load has no documented
-            # `revision` arg, so the pinned SHA is NOT enforced here; pin via HF_HUB cache / snapshot download in the pilot.
-            # Also unclear which of english / typed-decisions subfolders the paper's "laya-base" means. Fine-tuned laya-ft
-            # checkpoints will need their own loader.
+            # laya 0.3.21: load(..., revision=) pins the HF commit; the English root checkpoint is laya-base (PREREG §4).
+            # Local dirs (laya-ft checkpoints) take no revision.
             import laya
+            import laya.agent
+            # laya rounds every probability to 4 dp, so saturated outputs collapse to exactly 0/1 and recalibration
+            # can't separate them. Shadowing `round` in its module (used only in _decode_answers in 0.3.21) keeps full precision.
+            # ponytail: relies on laya==0.3.21 internals (pinned in pyproject); re-check on upgrade.
+            laya.agent.round = lambda x, ndigits=None: x
             if self._model is None:
-                self._model = laya.load(self.hf_id)
+                rev = None if Path(self.hf_id).is_dir() else self.revision
+                self._model = laya.load(self.hf_id, revision=rev)
             state = self.context_template.format(premise=item.premise, hypothesis=item.hypothesis)
             res = self._model.predict(state, {"q": {"type": "noul", "instructions": wording.text}})
             return Prediction(float(res["answers"]["q"]["noul"]), raw={"answer": res["answers"]["q"]})

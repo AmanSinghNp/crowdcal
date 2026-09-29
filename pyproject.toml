@@ -13,7 +13,7 @@ dependencies = [
 ]
 
 [project.optional-dependencies]
-local = ["torch>=2.4", "transformers>=4.48"]
+local = ["torch>=2.4", "transformers>=4.48", "laya==0.3.21"]
 
 [project.scripts]
 crowdcal = "crowdcal.cli:main"
