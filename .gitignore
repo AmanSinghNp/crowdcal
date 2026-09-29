@@ -1,0 +1,10 @@
+.venv/
+__pycache__/
+*.pyc
+.pytest_cache/
+.env
+# local dataset caches / checkpoints
+data/cache/
+data/checkpoints/
+# synthetic run outputs (real raw files ARE committed after the main run)
+data/raw/_synthetic/

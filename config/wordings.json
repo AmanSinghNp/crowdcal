@@ -1,0 +1,8 @@
+{
+  "context_template": "Premise: {premise}\nHypothesis: {hypothesis}",
+  "wordings": [
+    {"id": 1, "text": "Given the premise, is the hypothesis definitely true?"},
+    {"id": 2, "text": "Does the premise entail the hypothesis?"},
+    {"id": 3, "text": "If the premise is true, must the hypothesis also be true?"}
+  ]
+}
