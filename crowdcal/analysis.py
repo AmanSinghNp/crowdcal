@@ -105,6 +105,10 @@ def analyze(raw_dir: Path, splits: dict, prereg: dict, calib_dir: Path, ckpt_dir
         rows[d] = load_arm(raw_dir, d)
         if not rows[d]:
             raise RuntimeError(f"no cached rows for arm {d!r} in {raw_dir}")
+        # PREREG §4: a hosted model silently updated mid-run invalidates the arm
+        served = {r["response_model"] for r in rows[d] if r.get("status") == "ok" and r.get("response_model")}
+        if len(served) > 1:
+            raise RuntimeError(f"arm {d!r} was served by more than one model version: {sorted(served)}")
         data[d], bad, wids[d] = _by_item(rows[d], universe)
         failed_by_arm[d] = bad | (universe - data[d].keys())
     excluded = set().union(*failed_by_arm.values())

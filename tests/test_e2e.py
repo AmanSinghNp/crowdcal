@@ -85,3 +85,15 @@ def test_prereg_guard(tmp_path, monkeypatch, capsys):
     subprocess.run(["git", "-c", "user.name=t", "-c", "user.email=t@t", "commit", "-q", "--allow-empty", "-m", "x"], check=True)
     subprocess.run(["git", "tag", "prereg-v1"], check=True)
     assert cli._has_prereg_tag()
+
+
+def test_model_version_drift_rejected(demo, tmp_path):
+    raw = tmp_path / "raw"
+    shutil.copytree(demo / "raw", raw)
+    f = next((raw / "jev").glob("*.jsonl"))
+    rows = [json.loads(l) for l in f.read_text().splitlines() if l.strip()]
+    rows[0]["response_model"], rows[1]["response_model"] = "jev-a", "jev-b"
+    f.write_text("".join(json.dumps(r) + "\n" for r in rows))
+    prereg = json.loads((cli.ROOT / "config" / "prereg.json").read_text())
+    with pytest.raises(RuntimeError, match="more than one model version"):
+        analyze(raw, data.synthetic_splits(0), {**prereg, "n_boot": 200}, tmp_path / "calib")

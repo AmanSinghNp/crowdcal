@@ -2,7 +2,7 @@
 
 > Does 70% mean 70% of people agree? A calibration benchmark for typed decision models, scored against the full human label distribution.
 
-Status: draft, not yet frozen. The binding version of everything under "Analysis" is `PREREG.md` at tag `prereg-v1`.
+Status: frozen at tag `prereg-v1`. Where this spec and `PREREG.md` differ, `PREREG.md` wins.
 
 ## 1. Questions
 
