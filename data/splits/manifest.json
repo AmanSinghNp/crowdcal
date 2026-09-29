@@ -1,0 +1,58 @@
+{
+  "seed": 0,
+  "sources": {
+    "chaosnli_snli.jsonl": "https://huggingface.co/datasets/earino/chaosnli/resolve/eb7cc18dbfa0f161d93a2b22c7856ca0faafcf2b/raw/chaosNLI_snli.jsonl",
+    "chaosnli_mnli_m.jsonl": "https://huggingface.co/datasets/earino/chaosnli/resolve/eb7cc18dbfa0f161d93a2b22c7856ca0faafcf2b/raw/chaosNLI_mnli_m.jsonl",
+    "multinli_1.0.zip": "https://cims.nyu.edu/~sbowman/multinli/multinli_1.0.zip",
+    "snli_1.0.zip": "https://nlp.stanford.edu/projects/snli/snli_1.0.zip"
+  },
+  "notes": "Original ChaosNLI Dropbox link is dead; files come from HF mirror earino/chaosnli @ eb7cc18dbfa0f161d93a2b22c7856ca0faafcf2b (byte-identical archive of chaosNLI_v1.0). Only SNLI and MNLI-m subsets are used.",
+  "checksums": {
+    "chaosnli_snli.jsonl": "99f9015ddda7d85f66a087452bc30d53974314fe27e7d589e2f41ad44bd509c1",
+    "chaosnli_mnli_m.jsonl": "8eb49b589488e7b1a9ec95fb8a864bd50f0509b4f808eed0aed3f8167617664d",
+    "multinli_1.0.zip": "049f507b9e36b1fcb756cfd5aeb3b7a0cfcb84bf023793652987f7e7e0957822",
+    "snli_1.0.zip": "afb3d70a5af5d8de0d9d81e2637e0fb8c22d1235c2749d83125ca43dab0dbd3e"
+  },
+  "dataset_rev": {
+    "chaosnli-snli": "99f9015ddda7d85f66a087452bc30d53974314fe27e7d589e2f41ad44bd509c1",
+    "chaosnli-mnli": "8eb49b589488e7b1a9ec95fb8a864bd50f0509b4f808eed0aed3f8167617664d",
+    "mnli-train": "049f507b9e36b1fcb756cfd5aeb3b7a0cfcb84bf023793652987f7e7e0957822",
+    "mnli-dev": "049f507b9e36b1fcb756cfd5aeb3b7a0cfcb84bf023793652987f7e7e0957822"
+  },
+  "counts": {
+    "train@100": 100,
+    "train@1k": 1000,
+    "train@10k": 10000,
+    "train@30k": 30000,
+    "dev": 4108,
+    "calib": 4108,
+    "test": 3113
+  },
+  "counts_by_dataset": {
+    "chaosnli-snli": 1514,
+    "chaosnli-mnli": 1599
+  },
+  "train_pool_size": 392570,
+  "dev_calib_pool_size": 8216,
+  "chaosnli_provenance": {
+    "chaosnli_snli": {
+      "total": 1514,
+      "uid_in_snli_dev": 1514,
+      "text_matches_snli_dev": 1514
+    },
+    "chaosnli_mnli_m": {
+      "total": 1599,
+      "uid_in_mnli_dev_matched": 1599,
+      "text_matches_mnli_dev_matched": 1599
+    }
+  },
+  "id_file_sha256": {
+    "train@100": "0332275317c92a0763e1e40ddedbfe29556e0579900f6f202c61817f65879fee",
+    "train@1k": "fc89cb81d32b78a9bb4f9292039100d3c8bb66c328abc9cdc3e7d87d390574c7",
+    "train@10k": "8c46f67b4799d4d992a260f168f3461e2bccbf80467a11783b374627987a0bab",
+    "train@30k": "907607c85f2f7165a612f719372fac01646741bf8bb49d941cccf0f96ce13477",
+    "dev": "a16f9365a5d85db1ea2e5f924bb2b5042a2604ae977a7ccdfee7b7b4398c0721",
+    "calib": "4c218dad5f1d7fff81492e214655f987fe18f9fb5ba8bb6462b31ab10f051a13",
+    "test": "34f4fa6b27596a2357e2996823eacc79ea87ae01b8b617a35c388d4b934a5a69"
+  }
+}
