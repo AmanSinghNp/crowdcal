@@ -1,0 +1,21 @@
+{
+  "prereg_tag": "prereg-v1",
+  "sizes": [100, 1000, 10000, 30000],
+  "seeds": {"100": [0, 1, 2], "1000": [0, 1, 2], "10000": [0], "30000": [0]},
+  "hosted_arms": ["jev", "deepseek", "laya-base"],
+  "curve_arms": ["laya-ft", "mbert-ce"],
+  "primary": {"a": "laya-ft@30000", "b": "jev"},
+  "secondary": [
+    {"a": "laya-ft@100", "b": "mbert-ce@100"},
+    {"a": "laya-ft@1000", "b": "mbert-ce@1000"},
+    {"a": "laya-ft@10000", "b": "mbert-ce@10000"},
+    {"a": "laya-ft@30000", "b": "mbert-ce@30000"},
+    {"a": "laya-ft@30000", "b": "laya-base"}
+  ],
+  "n_boot": 10000,
+  "bootstrap_seed": 0,
+  "failure_flag_rate": 0.02,
+  "budget_usd": 20,
+  "t4_usd_per_hour": null,
+  "recalibration": "temperature"
+}

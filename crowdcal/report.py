@@ -48,7 +48,7 @@ def headline_figure(results: dict, path: Path) -> None:
     path = Path(path)
     fig, ax = plt.subplots(figsize=(11, 6.5))
     ax.set_xscale("log")
-    labels = []  # (y, text, color)
+    labels = []  # (x_end, y, text, color): leader lines start at the series' OWN endpoint
 
     all_sizes = sorted({int(s) for c in results["curves"].values() for s in c}) or [100, 1000, 10000, 30000]
     x0, x1 = min(all_sizes), max(all_sizes)
@@ -58,17 +58,18 @@ def headline_figure(results: dict, path: Path) -> None:
         c = CURVE_COLOR.get(arm, "#444444")
         ax.fill_between(xs, [b["ci"][0] for _, b in pts], [b["ci"][1] for _, b in pts], color=c, alpha=0.18, lw=0)
         ax.plot(xs, [b["mean"] for _, b in pts], color=c, lw=3, marker="o", ms=8, mec="white", mew=1.5, label=arm)
-        labels.append((pts[-1][1]["mean"], arm, c))
+        labels.append((x1, pts[-1][1]["mean"], arm, c))
 
     flat = [(a, m["recal"]["soft_brier"], FLAT_COLOR.get(a, "#444444")) for a, m in results["flat"].items()]
     flat.append(("prior baseline", results["prior_baseline"], GRAY))
+    xe = x1 * 1.12  # flat lines run a little past the last curve point so their endpoints never coincide with a curve's
     for name, b, c in flat:
-        ax.fill_between([x0, x1], b["ci"][0], b["ci"][1], color=c, alpha=0.10, lw=0)
-        ax.plot([x0, x1], [b["mean"]] * 2, color=c, lw=1.8, ls="-" if name != "prior baseline" else ":")
-        labels.append((b["mean"], name, c))
+        ax.fill_between([x0, xe], b["ci"][0], b["ci"][1], color=c, alpha=0.10, lw=0)
+        ax.plot([x0, xe], [b["mean"]] * 2, color=c, lw=1.8, ls="-" if name != "prior baseline" else ":")
+        labels.append((xe, b["mean"], name, c))
 
     nc = results["noise_ceiling"]
-    ax.axhline(nc, color="black", lw=1.5, ls="--")
+    ax.hlines(nc, x0, xe, color="black", lw=1.5, ls="--")
     ax.text(x0, nc, "annotator noise ceiling", va="bottom", ha="left", fontsize=12)
 
     cross = results.get("crossover") or {}
@@ -79,9 +80,9 @@ def headline_figure(results: dict, path: Path) -> None:
                     color=CURVE_COLOR["laya-ft"], fontweight="bold")
 
     ymin, ymax = ax.get_ylim()
-    ys = _spread([y for y, _, _ in labels], (ymax - ymin) * 0.045)
-    for (y, t, c), yy in zip(labels, ys):
-        ax.annotate(t, xy=(x1, y), xytext=(x1 * 1.25, yy), textcoords="data", va="center", fontsize=12,
+    ys = _spread([y for _, y, _, _ in labels], (ymax - ymin) * 0.045)
+    for (xa, y, t, c), yy in zip(labels, ys):
+        ax.annotate(t, xy=(xa, y), xytext=(x1 * 1.3, yy), textcoords="data", va="center", fontsize=12,
                     color=c, fontweight="bold" if t in CURVE_COLOR else "normal",
                     arrowprops=dict(arrowstyle="-", color=c, lw=0.8, shrinkA=0, shrinkB=0) if abs(yy - y) > 1e-9 else None)
 
