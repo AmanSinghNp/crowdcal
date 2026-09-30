@@ -3,7 +3,7 @@ import numpy as np
 from scipy.optimize import isotonic_regression, minimize_scalar
 from scipy.special import expit, logit
 
-_EPS = 1e-6
+_EPS = 1e-12  # PREREG A2: 1e-6 collapsed ~45% of deepseek pilot outputs onto one logit
 
 
 def _temp(p: np.ndarray, T: float) -> np.ndarray:

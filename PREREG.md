@@ -95,3 +95,17 @@ Each entry gives the date, what changed, why, and confirms that no test-split mo
 - **Noted, no change:** the checkpoint warns that its shipped temperature for 11+-option choice questions is out of range and gets clamped. That doesn't affect yes/no (Noul) questions.
 - **Pinning:** `laya.load(..., revision=<SHA>)` enforces the §4 revision. `laya==0.3.21` is pinned in `pyproject.toml`.
 - **Test data examined:** none. The pilot summary reads no soft labels.
+
+### A2 — 2026-09-30 — API arms pilot (`jev`, `deepseek`) and recalibration clip
+
+- **`deepseek` provider DeepSeek → Together (supersedes §4):** the account's OpenRouter privacy settings (zero data retention, no training on prompts) exclude the DeepSeek first-party endpoint, returning 404 "No endpoints found", and those settings are deliberately left unchanged. Fireworks was tried next and rejected, because it caps `top_logprobs` at 5, below §4's 20. Together accepts top-20 logprobs. With Together, all 300 pilot calls parsed, with 0 reasoning tokens and every call served by Together. The verbalized fallback (§6) is **not** triggered, since the failure rate was 0% against the 2% threshold.
+- **Repeats (§5 rule):**
+  - `jev`: 3 repeats. Only 67.3% of (item, wording) pairs were identical across 2 repeats.
+  - `deepseek`: 3 repeats. 94.7% were identical.
+  - `laya-base`: 1 repeat (A1).
+  - The repeat counts are now fixed per arm in `config/arms.json`. `crowdcal run` reads them from there.
+- **Served versions:** `jev` = `typesafe/jev-1.13-20260917`, 300 of 300. `deepseek` reports only its slug `deepseek/deepseek-v4.1-flash`.
+- **Jev resolution, noted with no change:** Jev returns probabilities at 0.01 resolution, observed range 0.01–0.98. It is evaluated as shipped, and averaging 3 repeats partly restores resolution.
+- **Recalibration clip (§7), 1e-6 → 1e-12:** 136 of 300 deepseek pilot outputs were below 1e-6, and 2 were exactly 0 because "Yes" was absent from the top-20. Clipping at 1e-6 put about 45% of deepseek's outputs on a single logit before temperature scaling. The same clip applies to every arm.
+- **Projected full-run API cost:** jev $0.87, deepseek $1.48.
+- **Test data examined:** none. All pilot items come from `calib`, and the pilot summary reads no soft labels.

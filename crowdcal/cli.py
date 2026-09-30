@@ -44,10 +44,11 @@ def cmd_run(a) -> int:
     items = data.load_split(a.split)[: a.limit]
     manifest = json.loads(Path("data/splits/manifest.json").read_text())
     prereg = _load("prereg.json")
-    wordings = data.load_wordings(WORDINGS_PATH)
+    wordings = data.load_wordings(WORDINGS_PATH) if arm.prompted else None
+    repeats = a.repeats or _load("arms.json")[a.arm.split("@")[0]]["repeats"]  # PREREG A2: repeats fixed per arm
     for ds in sorted({i.dataset for i in items}):
         stats = run_arm(arm, [i for i in items if i.dataset == ds], wordings, Path("data/raw"),
-                        manifest["dataset_rev"][ds], a.repeats, prereg["budget_usd"])
+                        manifest["dataset_rev"][ds], repeats, prereg["budget_usd"])
         print(ds, stats)
     return 0
 
@@ -142,7 +143,7 @@ def main(argv=None) -> int:
     r = sub.add_parser("run")
     r.add_argument("--arm", required=True)
     r.add_argument("--split", required=True, choices=["calib", "test"])
-    r.add_argument("--repeats", type=int, default=1)
+    r.add_argument("--repeats", type=int, default=None, help="override arms.json (pilot/debug only)")
     r.add_argument("--limit", type=int, default=None)
     r.set_defaults(fn=cmd_run)
     pl = sub.add_parser("pilot")

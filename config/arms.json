@@ -3,33 +3,38 @@
     "type": "openrouter",
     "model": "typesafe/jev-1.13",
     "provider": "TypeSafe",
-    "mode": "native"
+    "mode": "native",
+    "repeats": 3
   },
   "deepseek": {
     "type": "openrouter",
     "model": "deepseek/deepseek-v4.1-flash",
-    "provider": "DeepSeek",
-    "mode": "logprobs"
+    "provider": "Together",
+    "mode": "logprobs",
+    "repeats": 3
   },
   "laya-base": {
     "type": "local",
     "hf_id": "convaiinnovations/laya",
     "revision": "55cf4c4ebb4ebe31b2550e8bdf3bd21b99753851",
-    "prompted": true
+    "prompted": true,
+    "repeats": 1
   },
   "laya-ft": {
     "type": "local",
     "hf_id": "data/checkpoints/{arm}",
     "revision": "local",
     "prompted": true,
-    "base": "convaiinnovations/laya@55cf4c4ebb4ebe31b2550e8bdf3bd21b99753851"
+    "base": "convaiinnovations/laya@55cf4c4ebb4ebe31b2550e8bdf3bd21b99753851",
+    "repeats": 1
   },
   "mbert-ce": {
     "type": "local",
     "hf_id": "data/checkpoints/{arm}",
     "revision": "local",
     "prompted": false,
-    "base": "answerdotai/ModernBERT-large@45bb4654a4d5aaff24dd11d4781fa46d39bf8c13"
+    "base": "answerdotai/ModernBERT-large@45bb4654a4d5aaff24dd11d4781fa46d39bf8c13",
+    "repeats": 1
   },
   "api_key_env": "OPENROUTER_API_KEY"
 }

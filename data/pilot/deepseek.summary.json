@@ -1,0 +1,19 @@
+{
+  "arm": "deepseek",
+  "n_items": 50,
+  "rows": 300,
+  "ok": 300,
+  "fail_rate": 0.0,
+  "repeat_identical_frac": 0.9466666666666667,
+  "planned_repeats": 3,
+  "p_min": 0.0,
+  "p_max": 0.9999999586006115,
+  "p_distinct": 195,
+  "served_models": [
+    "deepseek/deepseek-v4.1-flash"
+  ],
+  "reasoning_tokens": 0,
+  "cost_usd": 0.006835,
+  "projected_full_run_usd": 1.48,
+  "sec_per_call": 0.3345
+}
