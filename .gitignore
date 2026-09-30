@@ -9,3 +9,5 @@ data/checkpoints/
 # synthetic run outputs (real raw files ARE committed after the main run)
 data/raw/_synthetic/
 build/
+# raw cache files are committed only once frozen (crowdcal freeze -> .jsonl.gz)
+data/raw/**/*.jsonl
