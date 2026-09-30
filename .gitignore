@@ -16,3 +16,4 @@ data/raw/**/*.jsonl
 
 # drafts (write-up, posts) stay local
 writeup/
+.claude/

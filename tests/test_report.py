@@ -32,7 +32,7 @@ def test_render(tmp_path):
     for f in ["headline.png", "headline.svg", "reliability.png", "index.html"]:
         assert (tmp_path / f).exists()
     h = (tmp_path / "index.html").read_text()
-    for s in ["Primary result", "Exploratory", "Paired comparisons", "Cost", "Reliability", "laya-ft@30k - jev", "—", "abc&lt;1&gt;"]:
+    for s in ["Primary result", "Exploratory", "Paired comparisons", "Cost", "Reliability", "Laya fine-tuned · 30k", "—", "abc&lt;1&gt;"]:
         assert s in h
     assert h.index("Primary result") < h.index("Reliability") < h.index("Cost") < h.index("Exploratory")
 

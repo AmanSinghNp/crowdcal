@@ -228,34 +228,170 @@ class _Raw(str):
     """Marks already-escaped HTML."""
 
 
-def _comp_table(comps) -> str:
-    return _table(["Comparison", "Family", "Diff", "95% CI", "p", "Holm p"],
-                  [[c["name"], c["family"], _f(c["diff"]), _ci(c["ci"]), _f(c["p"], 3), _f(c.get("p_holm"), 3)] for c in comps])
+REPO = "https://github.com/AmanSinghNp/crowdcal"
+SHORT = {"laya-ft": "Laya fine-tuned", "mbert-ce": "ModernBERT-large fine-tuned", "jev": "Jev",
+         "deepseek": "DeepSeek V4.1 Flash", "laya-base": "Laya (no fine-tuning)"}
 
 
-def _primary_sentence(c) -> str:
+def _label(key) -> str:
+    """'laya-ft@30000' -> 'Laya fine-tuned · 30k'."""
+    arm, _, rest = str(key).partition("@")
+    name = SHORT.get(arm, arm)
+    if not rest:
+        return name
+    size, _, seed = rest.partition("-s")     # checkpoint dirs look like 'laya-ft@1000-s2'
+    size = SIZES_LABEL.get(int(size), size) if size.isdigit() else size
+    return f"{name} · {size}" + (f" · seed {seed}" if seed else "")
+
+
+def _split_name(name):
+    """'laya-ft@30000 - jev (recal)' -> ('laya-ft@30000', 'jev', 'recal')."""
+    pair, _, kind = name.partition(" (")
+    a, _, b = pair.partition(" - ")
+    return a, b, kind.rstrip(")")
+
+
+def _verdict(c):
+    """Every pre-registered comparison predicts the first arm is lower (better). -> (css class, text)."""
     lo, hi = c["ci"]
-    if hi < 0:
-        verdict = "The first arm named has the lower (better) recalibrated soft Brier; the 95% interval excludes zero."
-    elif lo > 0:
-        verdict = "The second arm named has the lower (better) recalibrated soft Brier; the 95% interval excludes zero."
-    else:
-        verdict = "The 95% interval includes zero, so we cannot tell the two arms apart."
-    return (f"{c['name']}: difference in recalibrated soft Brier (first minus second) is {_f(c['diff'])}, "
-            f"95% CI {_ci(c['ci'])}, p = {_f(c['p'], 3)}. {verdict}")
+    sig = (c["p_holm"] < 0.05) if c.get("p_holm") is not None else (hi < 0 or lo > 0)
+    if not sig:
+        return "tie", "No clear difference"
+    return ("yes", "As predicted") if c["diff"] < 0 else ("no", "Opposite of prediction")
+
+
+def _p(x) -> str:
+    """Bootstrap p-values have 1e-4 resolution; don't print a bare 0.000."""
+    return "—" if x is None else ("< 0.001" if x < 0.001 else f"{x:.3f}")
+
+
+def _comp_table(comps) -> str:
+    rows = []
+    for c in comps:
+        a, b, kind = _split_name(c["name"])
+        rows.append([_label(a), _label(b), kind, _f(c["diff"]), _ci(c["ci"]), _p(c["p"]), _p(c.get("p_holm"))])
+    return _table(["First", "Second", "Scores", "Diff (first − second)", "95% CI", "p", "Holm p"], rows)
+
+
+def _ledger(comps) -> str:
+    items = []
+    for c in comps:
+        a, b, kind = _split_name(c["name"])
+        cls, text = _verdict(c)
+        role = "Primary" if c["family"] == "primary" else "Secondary"
+        p = f"Holm p {_p(c['p_holm'])}" if c.get("p_holm") is not None else f"p {_p(c['p'])}"
+        items.append(
+            f'<li class="h"><div class="h-q"><span class="role">{role}</span>'
+            f'Predicted: <b>{_e(_label(a))}</b> beats <b>{_e(_label(b))}</b></div>'
+            f'<div class="h-v"><span class="chip {cls}">{text}</span></div>'
+            f'<div class="h-n mono">{_f(c["diff"])} <span class="ci">{_ci(c["ci"])}</span> · {p}</div></li>')
+    return f'<ol class="ledger">{"".join(items)}</ol>'
+
+
+def _ruler(results) -> str:
+    """Every arm on one soft-Brier scale: filled dot = recalibrated (primary) with 95% CI, ring = raw."""
+    rows = [(_label(a), a, m["recal"]["soft_brier"], m["raw"]["soft_brier"]["mean"]) for a, m in results["flat"].items()]
+    rows += [(_label(f"{a}@{s}"), a, m["recal"]["soft_brier"], m["raw"]["soft_brier"]["mean"])
+             for a, by in results["curves"].items() for s, m in by.items()]
+    rows.sort(key=lambda r: r[2]["mean"])
+    pb, nc = results["prior_baseline"], results["noise_ceiling"]
+    top = max([r[2]["ci"][1] for r in rows] + [r[3] for r in rows] + [pb["ci"][1]])
+    step = 0.02 if top > 0.06 else 0.01
+    xmax = step * (int(top / step) + 1)
+    pos = lambda v: f"{100 * v / xmax:.2f}%"
+    ticks = "".join(f'<span style="left:{pos(k * step)}">{k * step:.2f}</span>' for k in range(int(round(xmax / step)) + 1))
+    floor = f'<span class="nc" style="left:{pos(nc)}"></span><span class="pb" style="left:{pos(pb["mean"])}"></span>'
+
+    def row(label, arm, b, raw):
+        lo, hi = b["ci"]
+        return (f'<div class="r-lab"><span class="sw" style="--c:var(--{arm})"></span>{_e(label)}</div>'
+                f'<div class="r-track">{floor}<span class="r-ci" style="--c:var(--{arm});left:{pos(lo)};width:{pos(hi - lo)}"></span>'
+                f'<span class="r-raw" style="--c:var(--{arm});left:{pos(raw)}" title="raw {raw:.4f}"></span>'
+                f'<span class="r-dot" style="--c:var(--{arm});left:{pos(b["mean"])}" title="recalibrated {b["mean"]:.4f} [{lo:.4f}, {hi:.4f}]"></span></div>'
+                f'<div class="r-val mono">{b["mean"]:.3f}</div>')
+
+    body = "".join(row(*r) for r in rows)
+    return (f'<div class="ruler" role="img" aria-label="Recalibrated soft Brier for every arm, lowest first">{body}'
+            f'<div></div><div class="r-axis mono">{ticks}</div><div></div></div>'
+            f'<p class="legend"><span><i class="k-dot"></i>recalibrated, with 95% CI</span><span><i class="k-raw"></i>raw</span>'
+            f'<span><i class="k-nc"></i>annotator noise ceiling ({nc:.4f})</span><span><i class="k-pb"></i>prior baseline ({pb["mean"]:.3f})</span></p>')
+
+
+def _picture(name, alt) -> str:
+    return (f'<picture><source srcset="{name}-dark.png" media="(prefers-color-scheme: dark)">'
+            f'<img src="{name}.png" alt="{_e(alt)}" loading="lazy"></picture>')
+
+
+def _vars(theme) -> str:
+    return "".join(f"--{a}:{theme['series'][i]};" for a, i in ARM_SLOT.items())
 
 
 CSS = """
-:root{--bg:#fff;--fg:#1a1a1a;--muted:#666;--line:#ddd;--accent:#0072B2}
-@media (prefers-color-scheme:dark){:root{--bg:#141414;--fg:#e8e8e8;--muted:#a0a0a0;--line:#333;--accent:#56B4E9}}
-body{background:var(--bg);color:var(--fg);font:16px/1.5 system-ui,sans-serif;max-width:60rem;margin:0 auto;padding:1rem 16px 3rem}
-h1{font-size:1.6rem;line-height:1.25}h2{margin-top:2.5rem;border-bottom:1px solid var(--line);padding-bottom:.25rem}
-.q,.note,footer{color:var(--muted)}img{max-width:100%;height:auto;background:#fff;border-radius:4px}
-.scroll{overflow-x:auto}table{border-collapse:collapse;font-size:.9rem;font-variant-numeric:tabular-nums}
-th,td{padding:.35rem .6rem;border-bottom:1px solid var(--line);text-align:right;white-space:nowrap}
-th:first-child,td:first-child{text-align:left}.primary{border-left:4px solid var(--accent);padding-left:1rem}
-.exploratory{border:1px dashed var(--muted);padding:0 1rem 1rem;margin-top:2.5rem;border-radius:6px}
-.exploratory h2{border:0;margin-top:1rem}
+:root{--bg:#fbfcfd;--panel:#fff;--ink:#141a21;--ink2:#48525f;--muted:#7a8594;--rule:#dde3e9;--link:#1f5fae;
+--yes:#17805a;--no:#b3382c;--tie:#8a6a00;--nc:#141a21;VARS_LIGHT
+--display:"IBM Plex Sans Condensed","Arial Narrow",system-ui,sans-serif;--sans:"IBM Plex Sans",system-ui,sans-serif;
+--mono:"IBM Plex Mono",ui-monospace,Menlo,monospace}
+@media (prefers-color-scheme:dark){:root{--bg:#0d1117;--panel:#121820;--ink:#e8edf3;--ink2:#b3bdc9;--muted:#8591a0;
+--rule:#253040;--link:#79b0f2;--yes:#46c08f;--no:#f27a6b;--tie:#dcae45;--nc:#e8edf3;VARS_DARK}}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);font:16px/1.6 var(--sans);-webkit-text-size-adjust:100%}
+main{max-width:64rem;margin:0 auto;padding:3rem 16px 4rem}
+a{color:var(--link);text-underline-offset:2px}a:focus-visible,summary:focus-visible{outline:2px solid var(--link);outline-offset:3px;border-radius:2px}
+.mono{font-family:var(--mono);font-variant-numeric:tabular-nums}
+.eyebrow{font:500 .8rem/1 var(--mono);letter-spacing:.06em;text-transform:uppercase;color:var(--muted);margin:0 0 1.25rem}
+h1{font:600 clamp(2rem,5.2vw,3.4rem)/1.05 var(--display);letter-spacing:-.01em;margin:0 0 1rem;max-width:22ch}
+.lead{font-size:1.15rem;color:var(--ink2);max-width:62ch;margin:0 0 1.25rem}
+.facts{display:flex;flex-wrap:wrap;gap:.4rem 1.5rem;font:.85rem var(--mono);color:var(--muted);margin:0;padding:0;list-style:none}
+.facts b{color:var(--ink);font-weight:500}
+section{margin-top:4rem}
+h2{font:600 1.5rem/1.2 var(--display);margin:0 0 .35rem}
+h2+.sub{color:var(--ink2);margin:0 0 1.5rem;max-width:64ch}
+.panel{background:var(--panel);border:1px solid var(--rule);border-radius:10px;padding:1.25rem 1.25rem 1rem}
+.ruler{display:grid;grid-template-columns:minmax(12rem,17.5rem) 1fr 3.5rem;align-items:center;column-gap:1rem;row-gap:.2rem}
+.r-lab{font-size:.92rem;display:flex;align-items:center;gap:.55rem;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.sw{width:.7rem;height:.7rem;border-radius:2px;background:var(--c);flex:none}
+.r-track{position:relative;height:1.9rem}
+.r-track::before{content:"";position:absolute;left:0;right:0;top:50%;border-top:1px solid var(--rule)}
+.r-ci{position:absolute;top:calc(50% - 3px);height:6px;border-radius:3px;background:var(--c);opacity:.35}
+.r-dot,.r-raw{position:absolute;top:50%;width:.8rem;height:.8rem;border-radius:50%;transform:translate(-50%,-50%)}
+.r-dot{background:var(--c);box-shadow:0 0 0 2px var(--panel)}
+.r-raw{border:2px solid var(--c);background:var(--panel);width:.6rem;height:.6rem}
+.nc,.pb{position:absolute;top:0;bottom:0;border-left:1.5px dashed var(--nc);opacity:.55}
+.pb{border-left-style:dotted;border-color:var(--muted);opacity:.9}
+.r-val{text-align:right;font-size:.85rem;color:var(--ink2)}
+.r-axis{position:relative;height:1.6rem;border-top:1px solid var(--rule);margin-top:.3rem;font-size:.72rem;color:var(--muted)}
+.r-axis span{position:absolute;top:.35rem;transform:translateX(-50%)}
+.legend{display:flex;flex-wrap:wrap;gap:.5rem 1.25rem;font-size:.82rem;color:var(--ink2);margin:.9rem 0 0}
+.legend span{display:inline-flex;align-items:center;gap:.45rem}.legend i{display:inline-block}
+.k-dot{width:.7rem;height:.7rem;border-radius:50%;background:var(--ink2)}
+.k-raw{width:.6rem;height:.6rem;border-radius:50%;border:2px solid var(--ink2)}
+.k-nc,.k-pb{width:0;height:.9rem;border-left:1.5px dashed var(--nc)}.k-pb{border-left:1.5px dotted var(--muted)}
+.verdict{border-left:4px solid var(--no);padding:.25rem 0 .25rem 1rem;margin:0 0 1.5rem;font-size:1.1rem;max-width:64ch}
+.verdict.yes{border-color:var(--yes)}.verdict.tie{border-color:var(--tie)}
+.ledger{list-style:none;margin:0;padding:0;border-top:1px solid var(--rule)}
+.h{display:grid;grid-template-columns:1fr auto;gap:.2rem 1rem;padding:.85rem 0;border-bottom:1px solid var(--rule)}
+.h-q{font-size:1rem}.h-q b{font-weight:600}
+.role{display:inline-block;font:500 .7rem/1 var(--mono);text-transform:uppercase;letter-spacing:.06em;color:var(--muted);margin-right:.6rem}
+.h-v{text-align:right}.h-n{grid-column:1/-1;font-size:.82rem;color:var(--ink2)}.ci{color:var(--muted)}
+.chip{display:inline-block;font:600 .75rem/1 var(--mono);text-transform:uppercase;letter-spacing:.05em;padding:.35rem .55rem;border-radius:4px;border:1.5px solid currentColor}
+.chip.yes{color:var(--yes)}.chip.no{color:var(--no)}.chip.tie{color:var(--tie)}
+figure{margin:0}figure img{display:block;width:100%;height:auto}
+figcaption{font-size:.88rem;color:var(--ink2);margin-top:.75rem;max-width:64ch}
+.scroll{overflow-x:auto;-webkit-overflow-scrolling:touch}
+table{border-collapse:collapse;width:100%;font-size:.88rem}
+th{font:500 .72rem/1.2 var(--mono);text-transform:uppercase;letter-spacing:.05em;color:var(--muted);text-align:right;padding:.5rem .6rem;border-bottom:1px solid var(--ink2);white-space:nowrap}
+td{padding:.45rem .6rem;border-bottom:1px solid var(--rule);text-align:right;white-space:nowrap;font-family:var(--mono);font-variant-numeric:tabular-nums}
+th:first-child,td:first-child{text-align:left;font-family:var(--sans)}
+details{border-top:1px solid var(--rule);padding:.9rem 0}details:last-of-type{border-bottom:1px solid var(--rule)}
+summary{cursor:pointer;font:600 1.05rem var(--display)}summary::marker{color:var(--muted)}
+details>*:not(summary){margin-top:1rem}
+.note{font-size:.88rem;color:var(--muted)}
+pre{background:var(--panel);border:1px solid var(--rule);border-radius:8px;padding:.9rem 1rem;overflow-x:auto;font:.85rem/1.5 var(--mono)}
+footer{margin-top:4rem;padding-top:1.25rem;border-top:1px solid var(--rule);font-size:.82rem;color:var(--muted)}
+footer .mono{word-break:break-all}
+@media (max-width:600px){main{padding-top:2rem}.ruler{grid-template-columns:1fr 3rem;column-gap:.5rem}
+.r-lab{grid-column:1/-1;margin-top:.5rem}.ruler>div:nth-last-child(3),.ruler>div:last-child{display:none}
+.ruler .r-axis{grid-column:1/2}.h{grid-template-columns:1fr}.h-v{text-align:left}.panel{padding:1rem .75rem}}
 """
 
 
@@ -265,68 +401,133 @@ def render(results: dict, out_dir: Path = Path("docs")) -> None:
     headline_figure(results, out / "headline.png")
     reliability_figure(results, out / "reliability.png")
 
-    # arm table: flat arms, then every curve size; raw and recal rows
     arm_rows = []
 
-    def add(name, m):
+    def add(key, m):
         for kind in ("raw", "recal"):
             x = m[kind]
             nf = x.get("noise_floor") or {}
-            arm_rows.append([name, kind, _mean_ci(x["soft_brier"]), _f(x.get("js")), _f(x.get("ece")),
+            arm_rows.append([_label(key), kind, _mean_ci(x["soft_brier"]), _f(x.get("js")), _f(x.get("ece")),
                              _mean_ci({"mean": nf["excess"], "ci": nf["ci"]}) if nf else "—"])
 
     for arm, m in results["flat"].items():
         add(arm, m)
     for arm, by_size in results["curves"].items():
         for s in sorted(by_size, key=int):
-            add(f"{arm}@{SIZES_LABEL.get(int(s), s)}", by_size[s])
+            add(f"{arm}@{s}", by_size[s])
     pb = results["prior_baseline"]
-    arm_rows.append(["prior baseline", "—", _mean_ci(pb), "—", "—", "—"])
+    arm_rows.append(["Prior baseline", "—", _mean_ci(pb), "—", "—", "—"])
 
-    # per-wording (recalibrated, prompted arms only)
     pw = {a: m["recal"].get("per_wording") for a, m in results["flat"].items() if m["recal"].get("per_wording")}
     wids = sorted({w for d in pw.values() for w in d}, key=str)
-    pw_rows = [[a] + [_f(d.get(w)) for w in wids] for a, d in pw.items()]
+    pw_rows = [[_label(a)] + [_f(d.get(w)) for w in wids] for a, d in pw.items()]
 
     comps = results["comparisons"]
+    registered = [c for c in comps if c["family"] in ("primary", "secondary")]
     primary = [c for c in comps if c["family"] == "primary"]
-    main = [c for c in comps if c["family"] != "exploratory"]
     expl = [c for c in comps if c["family"] == "exploratory"]
-
-    cost_rows = [[c["arm"], _f(c.get("per_1k_usd")), _f(c.get("train_gpu_hours"), 2), _f(c.get("train_usd"), 2)]
+    cost_rows = [[_label(c["arm"]), _f(c.get("per_1k_usd")), _f(c.get("train_gpu_hours"), 2), _f(c.get("train_usd"), 2)]
                  for c in results["cost"]]
-    meta = results["meta"]
-    hashes = ", ".join(f"{_e(a)}: {_e(h)}" for a, h in meta.get("config_hashes", {}).items())
-    cross = results.get("crossover") or {}
-    cross_txt = (f"laya-ft first beats {_e(cross['best_hosted'])} at {_e(cross['size'])} training examples."
-                 if cross.get("size") else "No training size was found at which laya-ft beats the best hosted model.")
 
-    primary_html = "".join(f"<p>{_e(_primary_sentence(c))}</p>" for c in primary) or "<p>—</p>"
-    body = f"""<h1>{_e(TITLE)}</h1>
-<p class="q">{_e(QUESTION)}</p>
-<h2>Headline figure</h2>
-<img src="headline.png" alt="{_e(TITLE)}">
-<p class="note">{cross_txt}</p>
-<h2>Primary result</h2>
-<div class="primary">{primary_html}</div>
-<h2>Arms</h2>
-<p class="note">Soft Brier, JS, ECE and noise-floor excess; lower is better. 95% CIs in brackets.</p>
-{_table(["Arm", "Calibration", "Soft Brier [95% CI]", "JS", "ECE", "Noise-floor excess [95% CI]"], arm_rows)}
-<h2>Per-wording soft Brier</h2>
-{_table(["Arm"] + [f"wording {w}" for w in wids], pw_rows) if pw_rows else "<p>—</p>"}
-<h2>Reliability</h2>
-<img src="reliability.png" alt="Reliability plots: mean predicted p vs mean human share q">
-<h2>Paired comparisons</h2>
-{_comp_table(main)}
-<h2>Cost</h2>
-{_table(["Arm", "USD per 1k decisions", "Training GPU-hours", "Training USD"], cost_rows)}
-<div class="exploratory">
-<h2>Exploratory</h2>
-<p class="note">Not preregistered as confirmatory; no multiplicity correction.</p>
-{_comp_table(expl) if expl else "<p>—</p>"}
-</div>
-<footer><hr><p>Generated {_e(meta.get("generated"))} · n_items {_e(meta.get("n_items"))} · prereg tag {_e(meta.get("prereg_tag"))}<br>Config hashes: {hashes or "—"}</p></footer>"""
+    meta = results["meta"]
+    n = meta.get("n_items")
+    cross = results.get("crossover") or {}
+    best = SHORT.get(cross.get("best_hosted"), cross.get("best_hosted") or "the best hosted model")
+    if cross.get("size"):
+        thesis = f"Fine-tuned Laya overtakes {best} at {SIZES_LABEL.get(int(cross['size']), cross['size'])} labelled examples."
+    else:
+        thesis = f"No amount of fine-tuning caught {best}."
+    if primary:
+        a, b, _ = _split_name(primary[0]["name"])
+        cls, text = _verdict(primary[0])
+        pd, (lo, hi) = primary[0]["diff"], primary[0]["ci"]
+        better = _label(b) if pd > 0 else _label(a)
+        verdict = (f'<p class="verdict {cls}"><b>Primary hypothesis: {text.lower()}.</b> '
+                   f'{_e(_label(a))} vs {_e(_label(b))}: difference {_f(pd)} (95% CI {_f(lo)} to {_f(hi)}). '
+                   + (f'{_e(better)} tracks the crowd more closely.' if cls != "tie" else "The two cannot be told apart.") + "</p>")
+    else:
+        verdict = ""
+    hashes = "".join(f"<tr><td>{_e(_label(a))}</td><td>{_e(h)}</td></tr>" for a, h in meta.get("config_hashes", {}).items())
+    tag = _e(meta.get("prereg_tag"))
+
+    body = f"""<main>
+<header>
+<p class="eyebrow">Crowdcal · pre-registered calibration benchmark · {tag}</p>
+<h1>{_e(thesis)}</h1>
+<p class="lead">When a model says 0.7, do about 70% of people agree? We compared each model's probability of entailment
+with the share of 100 human annotators who chose entailment, on {_e(f"{n:,}" if isinstance(n, int) else n)} deliberately
+ambiguous ChaosNLI items. The score is soft Brier, (p − q)²: lower means the model's confidence tracks the crowd.</p>
+<ul class="facts"><li><b>{_e(f"{n:,}" if isinstance(n, int) else n)}</b> test items</li><li><b>100</b> annotators each</li>
+<li><b>5</b> models</li><li><b>4</b> training sizes</li><li><a href="{REPO}/blob/main/PREREG.md">Pre-registration</a></li>
+<li><a href="{REPO}">Code and raw data</a></li></ul>
+</header>
+
+<section aria-labelledby="s-ruler">
+<h2 id="s-ruler">Every model on one scale</h2>
+<p class="sub">Recalibrated soft Brier on the test set, best first. The dashed line is the best any model could score given
+annotator noise; the dotted line is always predicting the training base rate.</p>
+<div class="panel">{_ruler(results)}</div>
+</section>
+
+<section aria-labelledby="s-primary">
+<h2 id="s-primary">Primary result</h2>
+<p class="sub">Registered before any model was run. Every comparison predicts the first model scores lower (better).</p>
+{verdict}
+{_ledger(registered)}
+</section>
+
+<section aria-labelledby="s-curve">
+<h2 id="s-curve">What labelled data buys</h2>
+<p class="sub">Fine-tuned models at 100, 1k, 10k and 30k training examples, against the models that get no training.</p>
+<figure class="panel">{_picture("headline", TITLE)}<figcaption>At 100 and 1k examples the bands also include variation across three
+training seeds; 10k and 30k have one seed each.</figcaption></figure>
+</section>
+
+<section aria-labelledby="s-rel">
+<h2 id="s-rel">Reliability: does 0.7 mean 70%?</h2>
+<p class="sub">Test items grouped into ten equal-sized bins by predicted probability. Points on the diagonal mean the
+model's probability matches the share of annotators who agreed.</p>
+<figure class="panel">{_picture("reliability", "Reliability plots: mean predicted probability against mean human share")}</figure>
+</section>
+
+<section aria-labelledby="s-cost">
+<h2 id="s-cost">Cost</h2>
+<p class="sub">API arms at list price through OpenRouter; local arms at $0.35 per T4 GPU-hour. Training cost is shown
+separately, not spread across decisions.</p>
+{_table(["Model", "USD per 1,000 decisions", "Training GPU-hours", "Training USD"], cost_rows)}
+</section>
+
+<section aria-labelledby="s-more">
+<h2 id="s-more">All the numbers</h2>
+<p class="sub">Everything below rebuilds from the frozen raw responses with <code class="mono">crowdcal report</code>.</p>
+<details><summary>Every model, raw and recalibrated</summary>
+<p class="note">Soft Brier, Jensen–Shannon distance, expected calibration error, and excess over the annotator noise
+ceiling. Lower is better throughout; 95% CIs in brackets.</p>
+{_table(["Model", "Scores", "Soft Brier [95% CI]", "JS", "ECE", "Excess over noise [95% CI]"], arm_rows)}</details>
+<details><summary>Per question wording</summary>
+{_table(["Model"] + [f"Wording {w}" for w in wids], pw_rows) if pw_rows else "<p>—</p>"}</details>
+<details><summary>Paired comparisons (registered)</summary>{_comp_table(registered)}</details>
+<details><summary>Exploratory comparisons</summary>
+<p class="note">Not pre-registered as confirmatory, and not corrected for multiple comparisons.</p>
+{_comp_table(expl) if expl else "<p>—</p>"}</details>
+<details><summary>Reproduce</summary>
+<pre>git clone {REPO}
+cd crowdcal &amp;&amp; uv sync
+uv run crowdcal report   # rebuilds this page from data/raw</pre>
+<div class="scroll"><table><thead><tr><th>Model</th><th>Cache config hash</th></tr></thead><tbody>{hashes}</tbody></table></div>
+</details>
+</section>
+
+<footer>Generated {_e(meta.get("generated"))} · pre-registration tag <span class="mono">{tag}</span> ·
+<a href="{REPO}">{REPO.split("//")[1]}</a> · code MIT, data CC BY 4.0</footer>
+</main>"""
+    css = CSS.replace("VARS_LIGHT", _vars(THEMES["light"])).replace("VARS_DARK", _vars(THEMES["dark"]))
     page = (f'<!doctype html><html lang="en"><head><meta charset="utf-8">'
-            f'<meta name="viewport" content="width=device-width,initial-scale=1"><title>Crowdcal</title>'
-            f"<style>{CSS}</style></head><body>{body}</body></html>")
+            f'<meta name="viewport" content="width=device-width,initial-scale=1">'
+            f'<meta name="color-scheme" content="light dark"><title>Crowdcal — {_e(thesis)}</title>'
+            f'<meta name="description" content="{_e(TITLE)} Pre-registered calibration benchmark against ChaosNLI human label distributions.">'
+            f'<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>'
+            f'<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans+Condensed:wght@600'
+            f'&family=IBM+Plex+Sans:wght@400;600&display=swap" rel="stylesheet">'
+            f"<style>{css}</style></head><body>{body}</body></html>")
     (out / "index.html").write_text(page, encoding="utf-8")
