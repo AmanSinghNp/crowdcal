@@ -1,0 +1,3 @@
+Model outputs, splits and results under data/ and docs/ are licensed CC BY 4.0
+(https://creativecommons.org/licenses/by/4.0/). They contain item IDs only, not dataset text;
+the underlying datasets (ChaosNLI, MultiNLI, SNLI) keep their own licenses.
