@@ -28,11 +28,32 @@ import matplotlib.pyplot as plt  # noqa: E402
 TITLE = "How much labelled data does a small model need to beat hosted models?"
 QUESTION = ("Does 70% mean 70% of people agree? Soft Brier score against the full human label "
             "distribution, for fine-tuned small models vs hosted models.")
-# Okabe-Ito (colorblind-safe). Fine-tuned arms: thick line + markers; flat arms: thin line, no markers.
-CURVE_COLOR = {"laya-ft": "#D55E00", "mbert-ce": "#0072B2"}
-FLAT_COLOR = {"jev": "#009E73", "deepseek": "#CC79A7", "laya-base": "#E69F00"}
-GRAY = "#6b6b6b"
+# Categorical slots 1-5 of the dataviz reference palette, in validated order (adjacent CVD dE >= 8.4 both modes).
+# Color follows the arm, so both figures agree. Text is always ink; the colored mark beside it carries identity.
+ARM_SLOT = {"mbert-ce": 0, "laya-ft": 1, "jev": 2, "laya-base": 3, "deepseek": 4}
+THEMES = {
+    "light": {"surface": "#ffffff", "ink": "#0b0b0b", "ink2": "#52514e", "muted": "#898781", "grid": "#e1e0d9",
+              "axis": "#c3c2b7", "series": ["#2a78d6", "#eb6834", "#1baf7a", "#eda100", "#e87ba4"]},
+    "dark": {"surface": "#0d1117", "ink": "#f0f6fc", "ink2": "#c3c2b7", "muted": "#898781", "grid": "#262a30",
+             "axis": "#3d434b", "series": ["#3987e5", "#d95926", "#199e70", "#c98500", "#d55181"]},
+}
+NAME = {"laya-ft": "Laya, fine-tuned", "mbert-ce": "ModernBERT-large, fine-tuned", "jev": "Jev",
+        "deepseek": "DeepSeek V4.1 Flash", "laya-base": "Laya, no fine-tuning", "prior baseline": "Prior baseline"}
 SIZES_LABEL = {100: "100", 1000: "1k", 10000: "10k", 30000: "30k"}
+FONT = {"font.family": "sans-serif", "font.sans-serif": ["Helvetica Neue", "Helvetica", "Arial", "DejaVu Sans"]}
+
+
+def _color(arm, t):
+    return t["series"][ARM_SLOT[arm]] if arm in ARM_SLOT else t["muted"]
+
+
+def _style(ax, t):
+    for side in ("top", "right", "left"):
+        ax.spines[side].set_visible(False)
+    ax.spines["bottom"].set_color(t["axis"])
+    ax.tick_params(colors=t["muted"], labelcolor=t["ink2"], length=0, pad=6)
+    ax.grid(axis="y", color=t["grid"], lw=0.8)
+    ax.set_axisbelow(True)
 
 
 def _spread(ys, gap):
@@ -44,86 +65,141 @@ def _spread(ys, gap):
     return out
 
 
-def headline_figure(results: dict, path: Path) -> None:
+def _themed(fn, results, path):
+    """Render `fn` once per theme: <name>.png (light, plus .svg) and <name>-dark.png for GitHub's dark mode."""
     path = Path(path)
-    fig, ax = plt.subplots(figsize=(11, 6.5))
+    for theme, t in THEMES.items():
+        with plt.rc_context(FONT):
+            fig = fn(results, t)
+        out = path if theme == "light" else path.with_name(f"{path.stem}-dark{path.suffix}")
+        fig.savefig(out, dpi=200, transparent=True)
+        if theme == "light" and fn is _headline:
+            fig.savefig(path.with_suffix(".svg"), transparent=True)
+        plt.close(fig)
+
+
+def _headline(results: dict, t: dict):
+    fig, ax = plt.subplots(figsize=(11, 6.4))
     ax.set_xscale("log")
-    labels = []  # (x_end, y, text, color): leader lines start at the series' OWN endpoint
+    labels = []  # (x_end, y, name, value, color, is_curve)
 
     all_sizes = sorted({int(s) for c in results["curves"].values() for s in c}) or [100, 1000, 10000, 30000]
     x0, x1 = min(all_sizes), max(all_sizes)
+    xe = x1 * 1.15  # flat lines run a little past the last curve point so endpoints never coincide
+    lows = []
+
+    flat = [(a, m["recal"]["soft_brier"]) for a, m in results["flat"].items()]
+    flat.append(("prior baseline", results["prior_baseline"]))
+    for name, b in flat:
+        c = _color(name, t)
+        ax.fill_between([x0, xe], b["ci"][0], b["ci"][1], color=c, alpha=0.10, lw=0)
+        ax.plot([x0, xe], [b["mean"]] * 2, color=c, lw=1.5, ls=(0, (1, 2.5)) if name == "prior baseline" else "-",
+                solid_capstyle="round", dash_capstyle="round")
+        labels.append((xe, b["mean"], name, b["mean"], c, False))
+        lows.append(b["ci"][0])
+
     for arm, by_size in results["curves"].items():
         pts = sorted((int(s), m["recal"]["soft_brier"]) for s, m in by_size.items())
         xs = [s for s, _ in pts]
-        c = CURVE_COLOR.get(arm, "#444444")
-        ax.fill_between(xs, [b["ci"][0] for _, b in pts], [b["ci"][1] for _, b in pts], color=c, alpha=0.18, lw=0)
-        ax.plot(xs, [b["mean"] for _, b in pts], color=c, lw=3, marker="o", ms=8, mec="white", mew=1.5, label=arm)
-        labels.append((x1, pts[-1][1]["mean"], arm, c))
-
-    flat = [(a, m["recal"]["soft_brier"], FLAT_COLOR.get(a, "#444444")) for a, m in results["flat"].items()]
-    flat.append(("prior baseline", results["prior_baseline"], GRAY))
-    xe = x1 * 1.12  # flat lines run a little past the last curve point so their endpoints never coincide with a curve's
-    for name, b, c in flat:
-        ax.fill_between([x0, xe], b["ci"][0], b["ci"][1], color=c, alpha=0.10, lw=0)
-        ax.plot([x0, xe], [b["mean"]] * 2, color=c, lw=1.8, ls="-" if name != "prior baseline" else ":")
-        labels.append((xe, b["mean"], name, c))
-
-    nc = results["noise_ceiling"]
-    ax.hlines(nc, x0, xe, color="black", lw=1.5, ls="--")
-    ax.text(x0, nc, "annotator noise ceiling", va="bottom", ha="left", fontsize=12)
+        c = _color(arm, t)
+        ax.fill_between(xs, [b["ci"][0] for _, b in pts], [b["ci"][1] for _, b in pts], color=c, alpha=0.14, lw=0)
+        ax.plot(xs, [b["mean"] for _, b in pts], color=c, lw=2.5, marker="o", ms=9, mec=t["surface"], mew=2,
+                solid_capstyle="round", solid_joinstyle="round", zorder=3)
+        labels.append((x1, pts[-1][1]["mean"], arm, pts[-1][1]["mean"], c, True))
+        lows += [b["ci"][0] for _, b in pts]
 
     cross = results.get("crossover") or {}
     if cross.get("size"):
-        ax.axvline(cross["size"], color=CURVE_COLOR["laya-ft"], lw=1, ls=":")
-        ax.annotate(f"laya-ft beats {cross['best_hosted']}", xy=(cross["size"], 0.98), xycoords=("data", "axes fraction"),
-                    xytext=(-6, -4), textcoords="offset points", ha="right", va="top", fontsize=12,
-                    color=CURVE_COLOR["laya-ft"], fontweight="bold")
+        ax.axvline(cross["size"], color=t["axis"], lw=1)
+        ax.annotate(f"Laya fine-tuned beats {NAME.get(cross['best_hosted'], cross['best_hosted'])}",
+                    xy=(cross["size"], 0.98), xycoords=("data", "axes fraction"), xytext=(-6, -4),
+                    textcoords="offset points", ha="right", va="top", fontsize=11, color=t["ink"])
 
+    ax.set_ylim(bottom=max(0.0, min(lows) - 0.01))
     ymin, ymax = ax.get_ylim()
-    ys = _spread([y for _, y, _, _ in labels], (ymax - ymin) * 0.045)
-    for (xa, y, t, c), yy in zip(labels, ys):
-        ax.annotate(t, xy=(xa, y), xytext=(x1 * 1.3, yy), textcoords="data", va="center", fontsize=12,
-                    color=c, fontweight="bold" if t in CURVE_COLOR else "normal",
-                    arrowprops=dict(arrowstyle="-", color=c, lw=0.8, shrinkA=0, shrinkB=0) if abs(yy - y) > 1e-9 else None)
+    ys = _spread([y for _, y, *_ in labels], (ymax - ymin) * 0.06)
+    lx = x1 * 1.45
+    for (xa, y, name, v, c, curve), yy in zip(labels, ys):
+        # colored leader from the series end to its label: identity sits beside the ink text
+        ax.plot([xa, lx / 1.04], [y, yy], color=c, lw=1.2, solid_capstyle="round")
+        ax.text(lx, yy, NAME.get(name, name), va="bottom", fontsize=11.5, color=t["ink"],
+                fontweight="bold" if curve else "normal")
+        ax.text(lx, yy, f"{v:.3f}", va="top", fontsize=10, color=t["ink2"])
 
-    ax.set_xlim(x0 / 1.3, x1 * 5)
+    ax.set_xlim(x0 / 1.3, x1 * 16)
     ax.set_xticks(all_sizes)
     ax.set_xticklabels([SIZES_LABEL.get(s, str(s)) for s in all_sizes])
     ax.minorticks_off()
-    ax.set_xlabel("Training examples (log scale)", fontsize=13)
-    ax.set_ylabel("Recalibrated soft Brier (lower is better)", fontsize=13)
-    ax.set_title(TITLE, fontsize=16, fontweight="bold", loc="left")
-    ax.tick_params(labelsize=12)
-    for side in ("top", "right"):
-        ax.spines[side].set_visible(False)
-    ax.grid(axis="y", color="#e5e5e5", lw=0.8)
-    ax.set_axisbelow(True)
+    ax.yaxis.set_major_formatter("{x:.2f}")
+    _style(ax, t)
+    ax.set_xlabel("Training examples for the fine-tuned models (log scale)", fontsize=11.5, color=t["ink2"], labelpad=8)
+    ax.set_title(TITLE, fontsize=16, fontweight="bold", loc="left", color=t["ink"], pad=34)
+    ax.text(0, 1.035, f"Recalibrated soft Brier, lower is better. Shaded bands are 95% CIs. "
+            f"The annotator-noise floor is {results['noise_ceiling']:.4f}.",
+            transform=ax.transAxes, fontsize=11.5, color=t["ink2"])
     fig.tight_layout()
-    fig.savefig(path, dpi=200)
-    fig.savefig(path.with_suffix(".svg"))
-    plt.close(fig)
+    return fig
+
+
+def _reliability(results: dict, t: dict):
+    groups = {}  # arm label -> {"raw"|"recal": bins}
+    for label, d in results["reliability"].items():
+        name, _, kind = label.rpartition(" (")
+        groups.setdefault(name, {})[kind.rstrip(")")] = d
+    n = max(len(groups), 1)
+    cols = min(n, 3)
+    rows = -(-n // cols)
+    fig, axes = plt.subplots(rows, cols, figsize=(3.6 * cols, 3.8 * rows + 0.6), squeeze=False, sharex=True, sharey=True)
+    for ax, (name, kinds) in zip(axes.flat, groups.items()):
+        arm, _, size = name.partition("@")
+        size = SIZES_LABEL.get(int(size), size) if size.isdigit() else size
+        c = _color(arm, t)
+        mx = max((k for d in kinds.values() for k in d["count"]), default=1)  # dot size is relative within a panel
+        ax.plot([0, 1], [0, 1], color=t["axis"], lw=1)
+        for kind, color, z in (("raw", t["muted"], 2), ("recal", c, 3)):
+            d = kinds.get(kind)
+            if not d:
+                continue
+            pts = sorted(zip(d["p"], d["q"], d["count"]))
+            ax.plot([p for p, _, _ in pts], [q for _, q, _ in pts], color=color, lw=1.5, alpha=0.9, zorder=z)
+            ax.scatter([p for p, _, _ in pts], [q for _, q, _ in pts], s=[16 + 110 * k / mx for _, _, k in pts],
+                       color=color, edgecolor=t["surface"], linewidth=1.5, zorder=z)
+        title = NAME.get(arm, arm) + (f", {size}" if size else "")
+        ax.set_title(title, fontsize=11, color=t["ink"], loc="left", fontweight="bold")
+        ax.set_xlim(-0.02, 1.02); ax.set_ylim(-0.02, 1.02); ax.set_aspect("equal")
+        ax.set_xticks([0, 0.5, 1]); ax.set_yticks([0, 0.5, 1])
+        _style(ax, t)
+        ax.grid(axis="x", color=t["grid"], lw=0.8)
+    for ax in axes[:, 0]:
+        ax.set_ylabel("Human share choosing entailment", fontsize=10, color=t["ink2"])
+    spare = list(axes.flat)[len(groups):]
+    for j in range(cols):  # x labels on the lowest filled panel of each column
+        ax = [a for a in axes[:, j] if a not in spare][-1]
+        ax.xaxis.set_tick_params(labelbottom=True)
+        ax.set_xlabel("Model P(entailment)", fontsize=10, color=t["ink2"])
+    for ax in spare:
+        ax.axis("off")
+    # key: in the spare cell when there is one, else under the title
+    key = spare[0] if spare else None
+    handles = [plt.Line2D([], [], color=t["series"][ARM_SLOT["jev"]], marker="o", mec=t["surface"], lw=1.5, ms=7,
+                          label="Recalibrated (arm colour)"),
+               plt.Line2D([], [], color=t["muted"], marker="o", mec=t["surface"], lw=1.5, ms=7, label="Raw"),
+               plt.Line2D([], [], color=t["axis"], lw=1, label="Perfect calibration")]
+    leg = (key or fig).legend(handles=handles, loc="center" if key else "upper right", frameon=False, fontsize=10,
+                             labelcolor=t["ink2"], title="Dot size = items in bin", title_fontsize=10)
+    leg.get_title().set_color(t["muted"])
+    fig.suptitle("Does the model's probability match the crowd?", x=0.02, ha="left", fontsize=14,
+                 fontweight="bold", color=t["ink"])
+    fig.tight_layout()
+    return fig
+
+
+def headline_figure(results: dict, path: Path) -> None:
+    _themed(_headline, results, path)
 
 
 def reliability_figure(results: dict, path: Path) -> None:
-    rel = results["reliability"]
-    n = max(len(rel), 1)
-    cols = min(n, 3)
-    rows = -(-n // cols)
-    fig, axes = plt.subplots(rows, cols, figsize=(4.2 * cols, 4.2 * rows), squeeze=False)
-    for ax, (label, d) in zip(axes.flat, rel.items()):
-        ax.plot([0, 1], [0, 1], color="#999999", lw=1, ls="--")
-        mx = max(d["count"]) if d["count"] else 1
-        ax.scatter(d["p"], d["q"], s=[20 + 180 * c / mx for c in d["count"]], color="#0072B2", alpha=0.75, edgecolor="white")
-        ax.set_title(label, fontsize=12)
-        ax.set_xlim(0, 1); ax.set_ylim(0, 1); ax.set_aspect("equal")
-        ax.set_xlabel("mean predicted p"); ax.set_ylabel("mean human share q")
-        for side in ("top", "right"):
-            ax.spines[side].set_visible(False)
-    for ax in list(axes.flat)[len(rel):]:
-        ax.axis("off")
-    fig.tight_layout()
-    fig.savefig(path, dpi=150)
-    plt.close(fig)
+    _themed(_reliability, results, path)
 
 
 def _e(x) -> str:

@@ -4,7 +4,10 @@ Does 70% mean 70% of people agree? Crowdcal is a pre-registered calibration benc
 
 **Results page:** [amansinghnp.github.io/crowdcal](https://amansinghnp.github.io/crowdcal/) · **Design:** [SPEC.md](SPEC.md), [PREREG.md](PREREG.md)
 
-![Headline figure](docs/headline.png)
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="docs/headline-dark.png">
+  <img alt="Recalibrated soft Brier by training size: fine-tuned models never reach Jev" src="docs/headline.png">
+</picture>
 
 ## Findings (v1.0)
 
@@ -26,6 +29,12 @@ The test set is 3,113 ChaosNLI items (SNLI and MNLI-matched), each labelled by 1
    - The same step fixes DeepSeek's near-binary outputs (0.103 → 0.056).
    - Calibration fitted on typical items doesn't transfer to disagreement.
 5. **Q1, calibration against the crowd:** Jev's raw probabilities follow the human share most closely (ECE 0.071). When it says about 0.77, about 70% of annotators chose entailment. DeepSeek V4.1 Flash, with reasoning off, puts nearly all its mass at 0 or 1.
+
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="docs/reliability-dark.png">
+  <img alt="Reliability diagrams: model P(entailment) against the human share, per arm" src="docs/reliability.png">
+</picture>
+
 6. **Q3, cost per 1,000 decisions:**
    - Jev: $0.013
    - DeepSeek: $0.022
