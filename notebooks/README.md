@@ -44,7 +44,7 @@ These are estimates from FLOP counts, not measurements. Expect them to be off by
 | 10,000 | 939 | 3 | 3 | 12 min |
 | 30,000 | 2,814 | 3 | 3 | 30 min |
 
-The full 8-run set takes about 2.5 hours. `gpu_hours` in `train_meta.json` counts training only (dev eval excluded), times the number of GPUs, so it is about 1 hour in total. `laya-ft` takes about 2.5–3.5 hours for all 8 runs. Scoring dev after each of its 4 epochs, one item at a time, dominates that time, so each run takes 15–35 minutes whatever its size. Both notebooks fit in one 12-hour session each.
+The full 8-run set takes about 4–5 hours on one T4 (DataParallel is disabled: it breaks ModernBERT on transformers 5.x). `gpu_hours` in `train_meta.json` counts training only (dev eval excluded), times the number of GPUs, so it is about 1 hour in total. `laya-ft` takes about 2.5–3.5 hours for all 8 runs. Scoring dev after each of its 4 epochs, one item at a time, dominates that time, so each run takes 15–35 minutes whatever its size. Both notebooks fit in one 12-hour session each.
 
 ## Disk: the ~20 GB `/kaggle/working` limit
 
