@@ -48,7 +48,8 @@ def cmd_run(a) -> int:
     repeats = a.repeats or _load("arms.json")[a.arm.split("@")[0]]["repeats"]  # PREREG A2: repeats fixed per arm
     for ds in sorted({i.dataset for i in items}):
         stats = run_arm(arm, [i for i in items if i.dataset == ds], wordings, Path("data/raw"),
-                        manifest["dataset_rev"][ds], repeats, prereg["budget_usd"])
+                        manifest["dataset_rev"][ds], repeats, prereg["budget_usd"],
+                        workers=a.workers or (8 if isinstance(arm, OpenRouterArm) else 1))
         print(ds, stats)
     return 0
 
@@ -145,6 +146,7 @@ def main(argv=None) -> int:
     r.add_argument("--split", required=True, choices=["calib", "test"])
     r.add_argument("--repeats", type=int, default=None, help="override arms.json (pilot/debug only)")
     r.add_argument("--limit", type=int, default=None)
+    r.add_argument("--workers", type=int, default=None, help="parallel API calls (default 8 for API arms, 1 local)")
     r.set_defaults(fn=cmd_run)
     pl = sub.add_parser("pilot")
     pl.add_argument("--arm", required=True)

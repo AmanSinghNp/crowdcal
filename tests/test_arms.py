@@ -175,3 +175,16 @@ def test_run_arm_budget(tmp_path):
     with pytest.raises(BudgetExceeded):
         run_arm(arm2, [item(9)], [W], tmp_path, "rev", budget_usd=1.0)
     assert arm2.calls == 0
+
+
+def test_run_arm_threaded_matches_serial(tmp_path):
+    from crowdcal.arms import FakeArm, run_arm
+    from crowdcal.cache import load_arm
+    from crowdcal.data import load_wordings, synthetic_splits
+    items, ws = synthetic_splits(0)["calib"][:20], load_wordings()
+    a = run_arm(FakeArm("fake"), items, ws, tmp_path / "a", "rev", repeats=2)
+    b = run_arm(FakeArm("fake"), items, ws, tmp_path / "b", "rev", repeats=2, workers=8)
+    assert a["calls"] == b["calls"] == 20 * len(ws) * 2
+    ra = {r["key"]: r["p_yes"] for r in load_arm(tmp_path / "a", "fake")}
+    rb = {r["key"]: r["p_yes"] for r in load_arm(tmp_path / "b", "fake")}
+    assert ra == rb

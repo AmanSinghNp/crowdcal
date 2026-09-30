@@ -3,7 +3,9 @@ import hashlib
 import json
 import math
 import re
+import threading
 import time
+from concurrent.futures import ThreadPoolExecutor
 from dataclasses import dataclass, field
 from datetime import datetime, timezone
 from pathlib import Path
@@ -204,44 +206,60 @@ def _spent(rows) -> float:
 
 def run_arm(arm, items: list[Item], wordings: list[Wording] | None, raw_dir: Path,
             dataset_rev: str, repeats: int = 1, budget_usd: float = 20.0,
-            max_retries: int = 3, sleep=time.sleep, backoff: float = 1.0) -> dict:
+            max_retries: int = 3, sleep=time.sleep, backoff: float = 1.0, workers: int = 1) -> dict:
     """Returns {"calls", "cached", "failed", "cost_usd"}: calls = rows written this run (ok + error),
-    cached = ok rows skipped, failed = error rows written, cost_usd = cumulative spend incl. earlier runs."""
+    cached = ok rows skipped, failed = error rows written, cost_usd = cumulative spend incl. earlier runs.
+    workers > 1 calls predict() from a thread pool (API arms only; local models are not thread-safe)."""
     ch = config_hash(arm.name, arm.model_version, arm.provider, arm.elicitation)
     cache = Cache(raw_dir, arm.name, ch)
-    spent = _spent(cache.rows.values())  # ponytail: superseded error rows' cost is not re-counted; negligible
-    calls = cached = failed = 0
+    lock = threading.Lock()
+    st = {"spent": _spent(cache.rows.values()), "calls": 0, "cached": 0, "failed": 0}
+    todo = []
     for item in items:
         for w in (wordings if arm.prompted else [None]):
             for rep in range(repeats):
                 key = row_key(ch, item.dataset, dataset_rev, item.id, w.sha if w else None, rep)
                 old = cache.get(key)
                 if old and old["status"] == "ok":
-                    cached += 1
-                    continue
-                pred, cost = None, 0.0
-                for attempt in range(max_retries + 1):
-                    if spent >= budget_usd:
-                        raise BudgetExceeded(f"spent ${spent:.4f} >= budget ${budget_usd}")
-                    try:
-                        pred = arm.predict(item, w)
-                    except Exception as e:  # network errors etc.
-                        pred = Prediction(None, {"exception": repr(e)}, status="error")
-                    c = float(pred.usage.get("cost_usd") or 0.0)
-                    cost += c
-                    spent += c
-                    if pred.status == "ok":
-                        break
-                    if attempt < max_retries:
-                        sleep(backoff * 2 ** attempt)
-                usage = {"in": pred.usage.get("in", 0), "out": pred.usage.get("out", 0), "cost_usd": cost}
-                cache.append({
-                    "key": key, "config_hash": ch, "arm": arm.name, "model_version": arm.model_version,
-                    "response_model": (pred.raw or {}).get("model"), "provider": arm.provider,
-                    "dataset": item.dataset, "dataset_rev": dataset_rev, "item_id": item.id,
-                    "wording_id": w.id if w else None, "wording_sha": w.sha if w else None, "repeat": rep,
-                    "p_yes": pred.p_yes, "raw": pred.raw, "usage": usage, "status": pred.status,
-                    "ts": datetime.now(timezone.utc).isoformat()})
-                calls += 1
-                failed += pred.status != "ok"
-    return {"calls": calls, "cached": cached, "failed": failed, "cost_usd": spent}
+                    st["cached"] += 1
+                else:
+                    todo.append((key, item, w, rep))
+
+    def one(key, item, w, rep):
+        pred, cost = None, 0.0
+        for attempt in range(max_retries + 1):
+            with lock:
+                if st["spent"] >= budget_usd:
+                    raise BudgetExceeded(f"spent ${st['spent']:.4f} >= budget ${budget_usd}")
+            try:
+                pred = arm.predict(item, w)
+            except Exception as e:  # network errors etc.
+                pred = Prediction(None, {"exception": repr(e)}, status="error")
+            c = float(pred.usage.get("cost_usd") or 0.0)
+            cost += c
+            with lock:
+                st["spent"] += c
+            if pred.status == "ok":
+                break
+            if attempt < max_retries:
+                sleep(backoff * 2 ** attempt)
+        usage = {"in": pred.usage.get("in", 0), "out": pred.usage.get("out", 0), "cost_usd": cost}
+        with lock:
+            cache.append({
+                "key": key, "config_hash": ch, "arm": arm.name, "model_version": arm.model_version,
+                "response_model": (pred.raw or {}).get("model"), "provider": arm.provider,
+                "dataset": item.dataset, "dataset_rev": dataset_rev, "item_id": item.id,
+                "wording_id": w.id if w else None, "wording_sha": w.sha if w else None, "repeat": rep,
+                "p_yes": pred.p_yes, "raw": pred.raw, "usage": usage, "status": pred.status,
+                "ts": datetime.now(timezone.utc).isoformat()})
+            st["calls"] += 1
+            st["failed"] += pred.status != "ok"
+
+    if workers <= 1:
+        for t in todo:
+            one(*t)
+    else:
+        with ThreadPoolExecutor(workers) as ex:
+            for f in [ex.submit(one, *t) for t in todo]:
+                f.result()  # re-raises BudgetExceeded
+    return {"calls": st["calls"], "cached": st["cached"], "failed": st["failed"], "cost_usd": st["spent"]}
