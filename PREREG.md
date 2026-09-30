@@ -109,3 +109,13 @@ Each entry gives the date, what changed, why, and confirms that no test-split mo
 - **Recalibration clip (§7), 1e-6 → 1e-12:** 136 of 300 deepseek pilot outputs were below 1e-6, and 2 were exactly 0 because "Yes" was absent from the top-20. Clipping at 1e-6 put about 45% of deepseek's outputs on a single logit before temperature scaling. The same clip applies to every arm.
 - **Projected full-run API cost:** jev $0.87, deepseek $1.48.
 - **Test data examined:** none. All pilot items come from `calib`, and the pilot summary reads no soft labels.
+
+### A3 — 2026-09-30 — Fine-tuning details the registration left open (Phase 4 notebooks, before any training)
+
+- **`mbert-ce`:** AdamW weight decay 0.01 and gradient-norm clip 1.0, the torch and HF defaults, which §5 didn't specify. Epochs are max(3, ceil(300 / steps per epoch)), so size 100 gets 75 epochs and 1k gets 10. The dev score used for selection is computed under fp16 autocast, while inference runs in fp32.
+- **`mbert-ce` inference:** `LocalArm` now truncates at 256 tokens, the same as training, and runs on cuda or mps when available.
+- **`laya-ft`**, following the pinned upstream notebook unchanged as §5 requires, with the consequences stated explicitly:
+  - Upstream holds out min(400, N/10) training items to fit its own temperature, so RLCD trains on 90, 900, 9,600 and 29,600 items. Both arms get the same labelled budget N; Laya spends part of it on its own calibration.
+  - Upstream runs 4 fixed epochs, so at N = 100 laya-ft takes about 8 optimizer steps, while mbert-ce takes ≥300. Upstream's cosine schedule also over-steps at small N, so the learning rate decays and then rises again. This asymmetry at small N is part of the pre-registered comparison, "Laya pipeline as shipped vs. off-the-shelf fine-tuning", and will be discussed as a limitation. It is not changed here.
+  - The temperature is refitted after each epoch, where upstream fits once at the end, so that every epoch checkpoint is complete and can be scored for dev selection (§5).
+- **Test data examined:** none. No model has been trained yet.

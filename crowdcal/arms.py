@@ -189,8 +189,10 @@ class LocalArm:
         if self._model is None:
             rev = None if Path(self.hf_id).is_dir() else self.revision
             self._tok = AutoTokenizer.from_pretrained(self.hf_id, revision=rev)
-            self._model = AutoModelForSequenceClassification.from_pretrained(self.hf_id, revision=rev).eval()
-        enc = self._tok(item.premise, item.hypothesis, return_tensors="pt", truncation=True)
+            self._dev = "cuda" if torch.cuda.is_available() else "mps" if torch.backends.mps.is_available() else "cpu"
+            self._model = AutoModelForSequenceClassification.from_pretrained(self.hf_id, revision=rev).eval().to(self._dev)
+        # max_length matches training (PREREG §5)
+        enc = self._tok(item.premise, item.hypothesis, return_tensors="pt", truncation=True, max_length=256).to(self._dev)
         with torch.no_grad():
             p = torch.softmax(self._model(**enc).logits, dim=-1)[0, 1].item()
         return Prediction(p)
