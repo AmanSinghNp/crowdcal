@@ -1,4 +1,5 @@
 """Cache rows + splits -> results dict (schema: see crowdcal/report.py docstring)."""
+import gzip
 import hashlib
 import json
 import re
@@ -17,8 +18,14 @@ _DIR = re.compile(r"^(?P<arm>.+)@(?P<size>\d+)-s(?P<seed>\d+)$")
 
 
 def write_sums(raw_dir: Path) -> int:
+    """Freeze: gzip every jsonl deterministically (GitHub rejects files > 100 MB), then checksum the .gz files."""
     raw_dir = Path(raw_dir)
-    files = sorted(p for p in raw_dir.rglob("*.jsonl"))
+    for p in sorted(raw_dir.rglob("*.jsonl")):
+        gz = p.with_name(p.name + ".gz")
+        with gz.open("wb") as f, gzip.GzipFile(filename="", mode="wb", fileobj=f, mtime=0) as z:
+            z.write(p.read_bytes())
+        p.unlink()
+    files = sorted(raw_dir.rglob("*.jsonl.gz"))
     lines = [f"{hashlib.sha256(p.read_bytes()).hexdigest()}  {p.relative_to(raw_dir)}\n" for p in files]
     (raw_dir / "SHA256SUMS").write_text("".join(lines))
     return len(files)
@@ -31,7 +38,8 @@ def verify_sums(raw_dir: Path) -> None:
     if not sums.exists():
         return
     want = {l.split("  ", 1)[1]: l.split("  ", 1)[0] for l in sums.read_text().splitlines() if l.strip()}
-    have = {str(p.relative_to(raw_dir)): hashlib.sha256(p.read_bytes()).hexdigest() for p in raw_dir.rglob("*.jsonl")}
+    have = {str(p.relative_to(raw_dir)): hashlib.sha256(p.read_bytes()).hexdigest()
+            for p in raw_dir.rglob("*.jsonl*")}  # a plain .jsonl after freeze is new data -> mismatch
     if want != have:
         bad = sorted(k for k in want.keys() | have.keys() if want.get(k) != have.get(k))
         raise RuntimeError(f"raw data does not match SHA256SUMS: {bad}")

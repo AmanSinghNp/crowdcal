@@ -6,7 +6,7 @@ import pytest
 
 from crowdcal import cli, data
 from crowdcal.analysis import analyze, verify_sums, write_sums
-from crowdcal.cache import MixedConfigError
+from crowdcal.cache import Cache, MixedConfigError, load_arm
 
 
 @pytest.fixture(scope="module")
@@ -66,10 +66,15 @@ def test_mixed_config_propagates(demo):
 def test_sha256sums(demo, tmp_path):
     raw = tmp_path / "raw"
     shutil.copytree(demo / "raw", raw)
+    before = {d.name: load_arm(raw, d.name) for d in raw.iterdir() if d.is_dir()}
     assert write_sums(raw) > 0
     verify_sums(raw)
-    f = next((raw / "jev").glob("*.jsonl"))
-    f.write_text(f.read_text() + "\n")
+    assert not list(raw.rglob("*.jsonl"))  # frozen: only .jsonl.gz remain
+    assert {d: load_arm(raw, d) for d in before} == before  # gz round-trip is lossless
+    f = next((raw / "jev").glob("*.jsonl.gz"))
+    with pytest.raises(RuntimeError, match="frozen"):
+        Cache(raw, "jev", f.name.split(".")[0]).append({"key": "x"})
+    f.write_bytes(f.read_bytes() + b"\0")
     with pytest.raises(RuntimeError):
         verify_sums(raw)
 
