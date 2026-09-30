@@ -1,0 +1,68 @@
+{
+  "arm": "laya-ft",
+  "size": 100,
+  "seed": 1,
+  "base": "convaiinnovations/laya@55cf4c4ebb4ebe31b2550e8bdf3bd21b99753851",
+  "upstream_notebook_commit": "9d955671415fc19f069b9cc998928075c1f255ec",
+  "crowdcal_commit": "38cd6d871c5063bb2cf4f50670b2e66d6e4c76ea",
+  "hyperparameters": {
+    "epochs": 4,
+    "micro_batch": 8,
+    "grad_accum": 4,
+    "effective_batch": 64,
+    "world_size": 2,
+    "group_size": 4,
+    "lr_encoder": 2.5e-05,
+    "lr_head": 0.0001,
+    "optimizer": "AdamW(weight_decay=0.01)",
+    "scheduler": "CosineAnnealingLR(T_max=total_updates, eta_min=1e-6)",
+    "sigma_start": 0.4,
+    "sigma_end": 0.1,
+    "grad_clip": 1.0,
+    "w_sph": 0.75,
+    "w_rps": 1.0,
+    "ce_weight": 1.0,
+    "amp": "fp16 autocast + GradScaler",
+    "gradient_checkpointing": true,
+    "train_max_len": 1024,
+    "train_head_max_len": 256,
+    "tfit_max": 400,
+    "tfit_frac": 0.1,
+    "tfit_holdout_seed": 20260923,
+    "temperature_fit": "LBFGS(lr=0.1, max_iter=100) on log T, clamp [0.1, 10], min 10 items, per question type",
+    "shuffle_seed_base": 1042,
+    "n_train": 90,
+    "n_tfit": 10,
+    "total_scheduler_steps": 4
+  },
+  "epochs": [
+    {
+      "epoch": 1,
+      "dev_soft_brier": 0.038376406630159086
+    },
+    {
+      "epoch": 2,
+      "dev_soft_brier": 0.038376406630159086
+    },
+    {
+      "epoch": 3,
+      "dev_soft_brier": 0.03839508955423833
+    },
+    {
+      "epoch": 4,
+      "dev_soft_brier": 0.036281093070133996
+    }
+  ],
+  "selected_epoch": 4,
+  "gpu_hours": 0.019183650414148965,
+  "infer_sec_per_1k": 42.47090844928524,
+  "versions": {
+    "torch": "2.10.0+cu128",
+    "transformers": "5.0.0",
+    "laya": "0.3.21",
+    "python": "3.12.13"
+  },
+  "dry_run": false,
+  "started": "2026-09-30T05:56:12.694629+00:00",
+  "finished": "2026-09-30T06:14:55.744874+00:00"
+}

@@ -1,0 +1,421 @@
+{
+  "arm": "mbert-ce",
+  "size": 100,
+  "seed": 1,
+  "base": "answerdotai/ModernBERT-large@45bb4654a4d5aaff24dd11d4781fa46d39bf8c13",
+  "crowdcal_commit": "38cd6d871c5063bb2cf4f50670b2e66d6e4c76ea",
+  "hyperparameters": {
+    "lr": 2e-05,
+    "batch_size": 32,
+    "min_epochs": 3,
+    "min_steps": 300,
+    "warmup_frac": 0.1,
+    "max_length": 256,
+    "weight_decay": 0.01,
+    "max_grad_norm": 1.0,
+    "optimizer": "AdamW",
+    "schedule": "linear",
+    "epochs": 75,
+    "steps_per_epoch": 4,
+    "total_steps": 300,
+    "warmup_steps": 30,
+    "n_train": 100,
+    "n_dev": 4108,
+    "n_gpu": 1,
+    "micro_batch": 8,
+    "fp16": true,
+    "attn_implementation": "sdpa",
+    "dry_run": false
+  },
+  "epochs": [
+    {
+      "epoch": 1,
+      "step": 4,
+      "dev_soft_brier": 0.31227022409439087
+    },
+    {
+      "epoch": 2,
+      "step": 8,
+      "dev_soft_brier": 0.227853462100029
+    },
+    {
+      "epoch": 3,
+      "step": 12,
+      "dev_soft_brier": 0.23421026766300201
+    },
+    {
+      "epoch": 4,
+      "step": 16,
+      "dev_soft_brier": 0.23347938060760498
+    },
+    {
+      "epoch": 5,
+      "step": 20,
+      "dev_soft_brier": 0.22210675477981567
+    },
+    {
+      "epoch": 6,
+      "step": 24,
+      "dev_soft_brier": 0.2578314542770386
+    },
+    {
+      "epoch": 7,
+      "step": 28,
+      "dev_soft_brier": 0.27195069193840027
+    },
+    {
+      "epoch": 8,
+      "step": 32,
+      "dev_soft_brier": 0.2721073031425476
+    },
+    {
+      "epoch": 9,
+      "step": 36,
+      "dev_soft_brier": 0.2808428108692169
+    },
+    {
+      "epoch": 10,
+      "step": 40,
+      "dev_soft_brier": 0.2925906479358673
+    },
+    {
+      "epoch": 11,
+      "step": 44,
+      "dev_soft_brier": 0.28534793853759766
+    },
+    {
+      "epoch": 12,
+      "step": 48,
+      "dev_soft_brier": 0.28439050912857056
+    },
+    {
+      "epoch": 13,
+      "step": 52,
+      "dev_soft_brier": 0.2867205739021301
+    },
+    {
+      "epoch": 14,
+      "step": 56,
+      "dev_soft_brier": 0.2888652980327606
+    },
+    {
+      "epoch": 15,
+      "step": 60,
+      "dev_soft_brier": 0.29037851095199585
+    },
+    {
+      "epoch": 16,
+      "step": 64,
+      "dev_soft_brier": 0.29127275943756104
+    },
+    {
+      "epoch": 17,
+      "step": 68,
+      "dev_soft_brier": 0.29149478673934937
+    },
+    {
+      "epoch": 18,
+      "step": 72,
+      "dev_soft_brier": 0.29148218035697937
+    },
+    {
+      "epoch": 19,
+      "step": 76,
+      "dev_soft_brier": 0.29140713810920715
+    },
+    {
+      "epoch": 20,
+      "step": 80,
+      "dev_soft_brier": 0.29131028056144714
+    },
+    {
+      "epoch": 21,
+      "step": 84,
+      "dev_soft_brier": 0.2911699712276459
+    },
+    {
+      "epoch": 22,
+      "step": 88,
+      "dev_soft_brier": 0.2910366952419281
+    },
+    {
+      "epoch": 23,
+      "step": 92,
+      "dev_soft_brier": 0.29091233015060425
+    },
+    {
+      "epoch": 24,
+      "step": 96,
+      "dev_soft_brier": 0.2907826900482178
+    },
+    {
+      "epoch": 25,
+      "step": 100,
+      "dev_soft_brier": 0.2906597852706909
+    },
+    {
+      "epoch": 26,
+      "step": 104,
+      "dev_soft_brier": 0.2906361520290375
+    },
+    {
+      "epoch": 27,
+      "step": 108,
+      "dev_soft_brier": 0.2905178368091583
+    },
+    {
+      "epoch": 28,
+      "step": 112,
+      "dev_soft_brier": 0.29039889574050903
+    },
+    {
+      "epoch": 29,
+      "step": 116,
+      "dev_soft_brier": 0.29033362865448
+    },
+    {
+      "epoch": 30,
+      "step": 120,
+      "dev_soft_brier": 0.2902275025844574
+    },
+    {
+      "epoch": 31,
+      "step": 124,
+      "dev_soft_brier": 0.2901603877544403
+    },
+    {
+      "epoch": 32,
+      "step": 128,
+      "dev_soft_brier": 0.2900264263153076
+    },
+    {
+      "epoch": 33,
+      "step": 132,
+      "dev_soft_brier": 0.29004091024398804
+    },
+    {
+      "epoch": 34,
+      "step": 136,
+      "dev_soft_brier": 0.28997522592544556
+    },
+    {
+      "epoch": 35,
+      "step": 140,
+      "dev_soft_brier": 0.2899431586265564
+    },
+    {
+      "epoch": 36,
+      "step": 144,
+      "dev_soft_brier": 0.28979605436325073
+    },
+    {
+      "epoch": 37,
+      "step": 148,
+      "dev_soft_brier": 0.2897110879421234
+    },
+    {
+      "epoch": 38,
+      "step": 152,
+      "dev_soft_brier": 0.28968656063079834
+    },
+    {
+      "epoch": 39,
+      "step": 156,
+      "dev_soft_brier": 0.28958752751350403
+    },
+    {
+      "epoch": 40,
+      "step": 160,
+      "dev_soft_brier": 0.2895714342594147
+    },
+    {
+      "epoch": 41,
+      "step": 164,
+      "dev_soft_brier": 0.2895396947860718
+    },
+    {
+      "epoch": 42,
+      "step": 168,
+      "dev_soft_brier": 0.28946802020072937
+    },
+    {
+      "epoch": 43,
+      "step": 172,
+      "dev_soft_brier": 0.28938746452331543
+    },
+    {
+      "epoch": 44,
+      "step": 176,
+      "dev_soft_brier": 0.28940215706825256
+    },
+    {
+      "epoch": 45,
+      "step": 180,
+      "dev_soft_brier": 0.2893826365470886
+    },
+    {
+      "epoch": 46,
+      "step": 184,
+      "dev_soft_brier": 0.2893831431865692
+    },
+    {
+      "epoch": 47,
+      "step": 188,
+      "dev_soft_brier": 0.28934940695762634
+    },
+    {
+      "epoch": 48,
+      "step": 192,
+      "dev_soft_brier": 0.2893316447734833
+    },
+    {
+      "epoch": 49,
+      "step": 196,
+      "dev_soft_brier": 0.2893100380897522
+    },
+    {
+      "epoch": 50,
+      "step": 200,
+      "dev_soft_brier": 0.2893485128879547
+    },
+    {
+      "epoch": 51,
+      "step": 204,
+      "dev_soft_brier": 0.28927576541900635
+    },
+    {
+      "epoch": 52,
+      "step": 208,
+      "dev_soft_brier": 0.2892555594444275
+    },
+    {
+      "epoch": 53,
+      "step": 212,
+      "dev_soft_brier": 0.28922227025032043
+    },
+    {
+      "epoch": 54,
+      "step": 216,
+      "dev_soft_brier": 0.2892865836620331
+    },
+    {
+      "epoch": 55,
+      "step": 220,
+      "dev_soft_brier": 0.28923800587654114
+    },
+    {
+      "epoch": 56,
+      "step": 224,
+      "dev_soft_brier": 0.2892463803291321
+    },
+    {
+      "epoch": 57,
+      "step": 228,
+      "dev_soft_brier": 0.28916341066360474
+    },
+    {
+      "epoch": 58,
+      "step": 232,
+      "dev_soft_brier": 0.2891460955142975
+    },
+    {
+      "epoch": 59,
+      "step": 236,
+      "dev_soft_brier": 0.289237380027771
+    },
+    {
+      "epoch": 60,
+      "step": 240,
+      "dev_soft_brier": 0.28910237550735474
+    },
+    {
+      "epoch": 61,
+      "step": 244,
+      "dev_soft_brier": 0.2891581058502197
+    },
+    {
+      "epoch": 62,
+      "step": 248,
+      "dev_soft_brier": 0.2891697585582733
+    },
+    {
+      "epoch": 63,
+      "step": 252,
+      "dev_soft_brier": 0.28905558586120605
+    },
+    {
+      "epoch": 64,
+      "step": 256,
+      "dev_soft_brier": 0.28914549946784973
+    },
+    {
+      "epoch": 65,
+      "step": 260,
+      "dev_soft_brier": 0.2891218364238739
+    },
+    {
+      "epoch": 66,
+      "step": 264,
+      "dev_soft_brier": 0.2891174852848053
+    },
+    {
+      "epoch": 67,
+      "step": 268,
+      "dev_soft_brier": 0.28913864493370056
+    },
+    {
+      "epoch": 68,
+      "step": 272,
+      "dev_soft_brier": 0.289100706577301
+    },
+    {
+      "epoch": 69,
+      "step": 276,
+      "dev_soft_brier": 0.2890812158584595
+    },
+    {
+      "epoch": 70,
+      "step": 280,
+      "dev_soft_brier": 0.289074569940567
+    },
+    {
+      "epoch": 71,
+      "step": 284,
+      "dev_soft_brier": 0.2890821695327759
+    },
+    {
+      "epoch": 72,
+      "step": 288,
+      "dev_soft_brier": 0.2890709936618805
+    },
+    {
+      "epoch": 73,
+      "step": 292,
+      "dev_soft_brier": 0.2891313433647156
+    },
+    {
+      "epoch": 74,
+      "step": 296,
+      "dev_soft_brier": 0.28908571600914
+    },
+    {
+      "epoch": 75,
+      "step": 300,
+      "dev_soft_brier": 0.2891469895839691
+    }
+  ],
+  "selected_epoch": 5,
+  "selected_dev_soft_brier": 0.22210675477981567,
+  "gpu_hours": 0.05161268519472268,
+  "infer_sec_per_1k": 27.698954165000487,
+  "infer_precision": "fp32, single item, 1 GPU",
+  "versions": {
+    "python": "3.12.13",
+    "torch": "2.10.0+cu128",
+    "transformers": "5.0.0",
+    "cuda": "12.8",
+    "gpu": "Tesla T4"
+  },
+  "started": "2026-09-30T07:59:10+00:00",
+  "finished": "2026-09-30T08:22:52+00:00"
+}

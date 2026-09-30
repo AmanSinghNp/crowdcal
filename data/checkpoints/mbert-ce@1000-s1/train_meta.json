@@ -1,0 +1,96 @@
+{
+  "arm": "mbert-ce",
+  "size": 1000,
+  "seed": 1,
+  "base": "answerdotai/ModernBERT-large@45bb4654a4d5aaff24dd11d4781fa46d39bf8c13",
+  "crowdcal_commit": "38cd6d871c5063bb2cf4f50670b2e66d6e4c76ea",
+  "hyperparameters": {
+    "lr": 2e-05,
+    "batch_size": 32,
+    "min_epochs": 3,
+    "min_steps": 300,
+    "warmup_frac": 0.1,
+    "max_length": 256,
+    "weight_decay": 0.01,
+    "max_grad_norm": 1.0,
+    "optimizer": "AdamW",
+    "schedule": "linear",
+    "epochs": 10,
+    "steps_per_epoch": 32,
+    "total_steps": 320,
+    "warmup_steps": 32,
+    "n_train": 1000,
+    "n_dev": 4108,
+    "n_gpu": 1,
+    "micro_batch": 8,
+    "fp16": true,
+    "attn_implementation": "sdpa",
+    "dry_run": false
+  },
+  "epochs": [
+    {
+      "epoch": 1,
+      "step": 32,
+      "dev_soft_brier": 0.1758037954568863
+    },
+    {
+      "epoch": 2,
+      "step": 64,
+      "dev_soft_brier": 0.07737250626087189
+    },
+    {
+      "epoch": 3,
+      "step": 96,
+      "dev_soft_brier": 0.07653684169054031
+    },
+    {
+      "epoch": 4,
+      "step": 128,
+      "dev_soft_brier": 0.07471954077482224
+    },
+    {
+      "epoch": 5,
+      "step": 160,
+      "dev_soft_brier": 0.09330194443464279
+    },
+    {
+      "epoch": 6,
+      "step": 192,
+      "dev_soft_brier": 0.07606233656406403
+    },
+    {
+      "epoch": 7,
+      "step": 224,
+      "dev_soft_brier": 0.07623153179883957
+    },
+    {
+      "epoch": 8,
+      "step": 256,
+      "dev_soft_brier": 0.07560735195875168
+    },
+    {
+      "epoch": 9,
+      "step": 288,
+      "dev_soft_brier": 0.0758332684636116
+    },
+    {
+      "epoch": 10,
+      "step": 320,
+      "dev_soft_brier": 0.07588722556829453
+    }
+  ],
+  "selected_epoch": 4,
+  "selected_dev_soft_brier": 0.07471954077482224,
+  "gpu_hours": 0.06666126608944498,
+  "infer_sec_per_1k": 26.864580540000134,
+  "infer_precision": "fp32, single item, 1 GPU",
+  "versions": {
+    "python": "3.12.13",
+    "torch": "2.10.0+cu128",
+    "transformers": "5.0.0",
+    "cuda": "12.8",
+    "gpu": "Tesla T4"
+  },
+  "started": "2026-09-30T08:53:39+00:00",
+  "finished": "2026-09-30T09:00:41+00:00"
+}

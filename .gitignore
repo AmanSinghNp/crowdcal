@@ -5,7 +5,9 @@ __pycache__/
 .env
 # local dataset caches / checkpoints
 data/cache/
-data/checkpoints/
+data/checkpoints/**
+!data/checkpoints/*/
+!data/checkpoints/*/train_meta.json
 # synthetic run outputs (real raw files ARE committed after the main run)
 data/raw/_synthetic/
 build/
