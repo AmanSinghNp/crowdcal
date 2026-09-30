@@ -57,3 +57,7 @@ The full 8-run set takes about 4–5 hours on one T4 (DataParallel is disabled: 
 3. Move each run directory into your local checkout so the layout is `data/checkpoints/mbert-ce@100-s0/{config.json,model.safetensors,tokenizer*,train_meta.json}`. The directory name must be exactly `<arm>@<size>-s<seed>`, because `config/arms.json` and the analysis look it up by that name. `data/checkpoints/` is git-ignored.
 4. Check each one loads: `crowdcal.arms.LocalArm("mbert-ce@100-s0", "data/checkpoints/mbert-ce@100-s0", "local", prompted=False).predict(item, None)` returns a probability.
 5. Keep each session's `summary.json` if you like, but nothing reads it: the analysis reads every `train_meta.json`.
+
+## Phase 5: score the checkpoints (`score_checkpoints_kaggle.ipynb`)
+
+Run this after both training notebooks finish. Attach both of their outputs as inputs (Add Input → Notebooks), use GPU T4 x2 with Internet on, and choose Save & Run All. It takes about 1.5 hours, runs one checkpoint queue per GPU, and writes `crowdcal_phase5.zip`, which holds the cache JSONL files and each checkpoint's `train_meta.json`. Unzip it at the repo root, then run `crowdcal freeze` and `crowdcal report`.
