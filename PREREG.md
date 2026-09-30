@@ -119,3 +119,7 @@ Each entry gives the date, what changed, why, and confirms that no test-split mo
   - Upstream runs 4 fixed epochs, so at N = 100 laya-ft takes about 8 optimizer steps, while mbert-ce takes ≥300. Upstream's cosine schedule also over-steps at small N, so the learning rate decays and then rises again. This asymmetry at small N is part of the pre-registered comparison, "Laya pipeline as shipped vs. off-the-shelf fine-tuning", and will be discussed as a limitation. It is not changed here.
   - The temperature is refitted after each epoch, where upstream fits once at the end, so that every epoch checkpoint is complete and can be scored for dev selection (§5).
 - **Test data examined:** none. No model has been trained yet.
+- **A3 addendum (Phase 4 execution, before any checkpoint was selected or scored on calib/test):**
+  - **Single GPU:** `mbert-ce` trains on one T4, because `DataParallel` breaks ModernBERT under Kaggle's transformers 5.0.
+  - **Gradient accumulation:** each batch of 32 is split into 4 micro-batches of 8. A batch of 32 × 256 tokens ran out of memory on a 16 GB T4. The summed per-example cross-entropy is divided by 32, so every update is the same batch-32 mean loss as §5 specifies.
+  - **Earlier attempts:** Version 1 crashed (DataParallel) and Version 2 stopped with out-of-memory after 3 of 8 runs. No checkpoint from either was used. Version 3 reruns all 8.
